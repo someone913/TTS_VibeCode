@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - TTS Indonesia</title>
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("tts_theme");
+                const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const theme = saved || (prefersDark ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Admin Header -->
+        <header class="app-header">
+            <div class="brand-wrapper">
+                <div class="brand-logo-tiles">
+                    <span class="logo-tile" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-bottom-color: #b45309;">A</span>
+                    <span class="logo-tile">D</span>
+                    <span class="logo-tile">M</span>
+                </div>
+                <div class="brand-headings">
+                    <span class="brand-title">TTS Indonesia</span>
+                    <span class="brand-subtitle">Panel Administrator & Kelola Soal</span>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <button id="admin-theme-btn" class="btn-action btn-theme" title="Ubah Tema Gelap / Terang">
+                    <span id="admin-theme-icon">🌙</span>
+                    <span id="admin-theme-text">Gelap</span>
+                </button>
+                <a href="/" class="btn-action btn-next" style="text-decoration: none;">
+                    🎮 Kembali ke Game
+                </a>
+                <div class="user-badge">
+                    <span>Admin:</span>
+                    <strong id="admin-username">-</strong>
+                </div>
+                <button id="admin-logout-btn" class="btn-ghost" title="Keluar">Keluar</button>
+            </div>
+        </header>
+
+        <!-- Stats Overview Cards -->
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-details">
+                    <h4>Total Papan</h4>
+                    <span id="stat-total-boards">0</span>
+                </div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-details">
+                    <h4>Papan Aktif</h4>
+                    <span id="stat-active-boards">0</span>
+                </div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-icon">⚙️</div>
+                <div class="stat-details">
+                    <h4>Status Hak Akses</h4>
+                    <span style="color: var(--success); font-size: 1.1rem; font-weight: 700;">Administrator</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar Tindakan Admin -->
+        <div class="app-toolbar">
+            <div class="board-info">
+                <input type="text" id="board-search" class="form-input" placeholder="🔍 Cari ID Papan (misal: P01)..." style="width: 280px; padding: 8px 14px; font-size: 0.9rem;">
+            </div>
+
+            <div class="toolbar-actions">
+                <button id="add-board-btn" class="btn-action btn-primary" style="margin-top: 0; width: auto; padding: 9px 18px;">
+                    ➕ Tambah Papan Baru
+                </button>
+                <button id="refresh-boards-btn" class="btn-action btn-next">
+                    🔄 Muat Ulang
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabel Daftar Papan -->
+        <main class="board-card" style="min-height: auto; padding: 20px; align-items: stretch;">
+            <div id="admin-alert" class="alert alert-success hidden"></div>
+
+            <div class="leaderboard-table-wrap">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>ID Papan</th>
+                            <th>Tinggi Grid</th>
+                            <th>Lebar Grid</th>
+                            <th>Jumlah Kata</th>
+                            <th style="text-align: center;">Status</th>
+                            <th style="text-align: right;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-boards-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px;">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Tambah / Edit Papan -->
+    <div id="board-form-modal" class="modal-overlay">
+        <div class="modal-card leaderboard-card" style="max-width: 500px !important;">
+            <div class="leaderboard-modal-header">
+                <h2 id="modal-form-title">Tambah Papan Baru</h2>
+                <button id="close-form-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <p class="leaderboard-modal-sub">Kelola konfigurasi dan geometri papan TTS</p>
+
+            <form id="board-crud-form">
+                <input type="hidden" id="form-is-edit" value="false">
+
+                <div class="form-group">
+                    <label for="form-board-id">ID Papan</label>
+                    <input type="text" id="form-board-id" class="form-input" placeholder="Misal: P301" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label for="form-grid-height">Tinggi Grid (Rows)</label>
+                        <input type="number" id="form-grid-height" class="form-input" min="5" max="30" value="12" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-grid-width">Lebar Grid (Cols)</label>
+                        <input type="number" id="form-grid-width" class="form-input" min="5" max="30" value="9" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-total-words">Jumlah Kata Ditampung</label>
+                    <input type="number" id="form-total-words" class="form-input" min="1" max="50" value="10">
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                    <input type="checkbox" id="form-active" style="width: 18px; height: 18px; cursor: pointer;" checked>
+                    <label for="form-active" style="margin-bottom: 0; cursor: pointer; text-transform: none; color: var(--text-main);">
+                        Aktifkan papan ini dalam permainan
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="submit" id="form-submit-btn" class="btn-primary" style="margin-top: 0;">Simpan Papan</button>
+                    <button type="button" id="form-cancel-btn" class="btn-ghost" style="padding: 12px 20px;">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+</body>
+</html>

@@ -7,33 +7,34 @@
 ## 1. Informasi Aplikasi
 
 **Nama aplikasi:**  
-`[Isi nama aplikasi]`
+Web EAM Playground / TTS ID
 
 **Deskripsi aplikasi:**  
-`[Jelaskan tujuan aplikasi dalam 1–3 kalimat]`
+Versi web dari permainan Teka-Teki Silang (TTS) dengan tampilan modern dan interaktif, mempertahankan geometri dan aturan permainan dari versi bot Telegram.
 
 **Target pengguna:**  
-`[Siapa yang akan menggunakan aplikasi?]`
+Pemain TTS yang menginginkan pengalaman bermain yang lebih visual dan interaktif melalui browser (laptop dan ponsel).
 
 **Masalah yang ingin diselesaikan:**  
-`[Jelaskan masalah yang ingin diselesaikan oleh aplikasi]`
+Mengubah pengalaman bermain TTS dari sekadar membalas pesan dan melihat gambar statis (PNG) menjadi interaksi langsung di atas papan (grid) interaktif berbasis web, dengan memisahkan data pengguna web dari pengguna Telegram.
 
 ## 2. Kebutuhan Aplikasi
 
 Fitur utama aplikasi:
 
-1. `[Fitur utama 1]`
-2. `[Fitur utama 2]`
-3. `[Fitur utama 3]`
-4. `[Fitur tambahan, jika ada]`
+1. Registrasi dan Login pengguna web (terpisah dari Telegram).
+2. Menampilkan daftar papan TTS yang tersedia dari database master.
+3. Permainan TTS interaktif dengan papan berbasis CSS Grid.
+4. Memilih soal (mendatar/menurun), mengisi jawaban, dan menggunakan hint.
+5. Menyimpan progres permainan dan skor khusus untuk pengguna web.
 
 **Halaman aplikasi:**
 
 - Login
 - Register
-- Main Page — My Notes
+- Main Page — Papan TTS Interaktif (Daftar papan & Skor)
 
-Pada Main Page, pengguna dapat melihat daftar catatan, membuat catatan, mengedit, menghapus, dan logout.
+Pada Main Page, pengguna dapat melihat daftar papan TTS, bermain TTS, mengisi jawaban, menggunakan hint, dan logout.
 
 ## 3. Pilihan Teknologi
 
@@ -42,28 +43,28 @@ Pilih satu opsi untuk setiap komponen yang diperlukan. Sesuaikan dengan kebutuha
 ### A. Backend Framework
 
 - [ ] 1. Go Standard Library (`net/http`)
-- [ ] 2. Gin
+- [x] 2. Gin
 - [ ] 3. Lainnya sebutkan
 
-**Pilihan saya:** `[Isi nomor pilihan]`
+**Pilihan saya:** 2
 
 ### B. ORM (Object-Relational Mapping)
 
 - [ ] 1. Tidak menggunakan ORM (SQL manual)
-- [ ] 2. GORM
+- [x] 2. GORM
 - [ ] 3. Lainnya sebutkan
 
-**Pilihan saya:** `[Isi nomor pilihan]`
+**Pilihan saya:** 2
 
-**Ketentuan:** `[Isi ketentuannya contoh memakai GORM atau menggunakan  SQL manual dengan library pgx]`
+**Ketentuan:** Memakai GORM dengan driver PostgreSQL untuk mengelola tabel `web_users`, `web_games`, dan membaca tabel master TTS.
 
 ### C. Database
 
-- [ ] 1. PostgreSQL
+- [x] 1. PostgreSQL
 - [ ] 2. MySQL
 - [ ] 3. SQLite
 
-**Pilihan saya:** `[Isi nomor pilihan]`
+**Pilihan saya:** 1
 
 ### D. Frontend
 
@@ -71,16 +72,16 @@ Pilih satu opsi untuk setiap komponen yang diperlukan. Sesuaikan dengan kebutuha
 - [ ] 2. React
 - [ ] 3. Vue
 
-**Pilihan saya:** `[Isi nomor pilihan]`
+**Pilihan saya:** 1
 
 ### E. Sistem Autentikasi
 
 - [ ] 1. Session
 - [x] 2. JWT
 
-**Pilihan saya:** `[Isi nomor pilihan]`
+**Pilihan saya:** 2
 
-**Ketentuan:** `[Isi ketentuan untuk Auth. contoh: Gunakan session berbasis server untuk mengelola status login pengguna atau Gunakan JWT berbasis server untuk mengelola status login pengguna.]`
+**Ketentuan:** Gunakan JWT berbasis server untuk mengelola status login pengguna web.
 
 ### F. Penyimpanan Sesi atau Token
 
@@ -88,9 +89,9 @@ Pilih satu opsi untuk setiap komponen yang diperlukan. Sesuaikan dengan kebutuha
 - [x] 2. localStorage
 - [ ] 3. Tidak diperlukan
 
-**Pilihan saya:** 1
+**Pilihan saya:** 2
 
-**Ketentuan:** Simpan ID session dalam localStorage dengan pengaturan keamanan yang sesuai.
+**Ketentuan:** Simpan token JWT dalam localStorage dengan penanganan otorisasi pada header API.
 
 ### G. API
 
@@ -99,7 +100,7 @@ Pilih satu opsi untuk setiap komponen yang diperlukan. Sesuaikan dengan kebutuha
 
 **Pilihan saya:** 1
 
-**Ketentuan:** Backend menyediakan REST API untuk autentikasi dan pengelolaan catatan. Frontend mengakses API menggunakan `fetch()`.
+**Ketentuan:** Backend Gin menyediakan REST API. Frontend mengakses API menggunakan `fetch()`.
 
 ### H. Version Control
 
@@ -120,13 +121,14 @@ Pilih satu opsi untuk setiap komponen yang diperlukan. Sesuaikan dengan kebutuha
 
 **Aturan akses:**
 
-1. Pengguna harus login untuk mengakses catatan.
+1. Pengguna harus login untuk mengakses permainan TTS.
 2. Pengguna yang belum login hanya dapat mengakses halaman Login dan Register.
-3. Setiap catatan harus memiliki `user_id` sebagai pemiliknya.
-4. Backend harus memeriksa kepemilikan catatan pada setiap operasi melihat detail, mengedit, dan menghapus.
-5. Pengguna tidak boleh melihat atau mengubah catatan pengguna lain, termasuk dengan mengubah ID pada URL atau request API.
-6. Password harus disimpan dalam bentuk hash menggunakan algoritma yang sesuai, bukan sebagai teks biasa.
-7. Setelah logout, session harus dinonaktifkan dan cookie session dibersihkan.
+3. Setiap permainan harus memiliki `user_id` (web user) sebagai pemainnya.
+4. Backend harus memeriksa kepemilikan sesi permainan pada setiap operasi mengisi jawaban atau meminta hint.
+5. Pengguna tidak boleh melihat atau mengubah progres permainan pengguna lain, termasuk dengan mengubah ID pada URL atau request API.
+6. Password harus disimpan dalam bentuk hash menggunakan algoritma yang sesuai (bcrypt), bukan sebagai teks biasa.
+7. Setelah logout, token JWT dihapus dari localStorage.
+8. Data user Telegram (chat_id, user_id) tidak digunakan di versi web.
 
 ## 5. Konfigurasi Environment dan Database
 
@@ -144,60 +146,5 @@ Contoh `.env.example`:
 
 ```dotenv
 APP_PORT=8080
-DATABASE_URL=postgres://username:password@localhost:5432/personal_notes?sslmode=disable
-SESSION_SECRET=replace-with-a-random-secret
-```
-
-**Catatan:** Nilai di atas hanya contoh untuk pengembangan lokal. Gunakan kredensial dan session secret milik sendiri pada file `.env`. Untuk database produksi, gunakan konfigurasi SSL sesuai persyaratan penyedia database.
-
-## 6. Batasan Pengembangan (BOLEH DIUBAH SESUAI KEINGINAN PESERTA PELATIHAN)
-
-- [ ] Struktur folder sederhana.
-- [ ] Kode mudah dipahami pemula.
-- [ ] Tidak menambahkan teknologi di luar pilihan tanpa persetujuan.
-- [ ] Memisahkan frontend dan backend.
-- [ ] Menggunakan environment variable untuk konfigurasi.
-- [ ] Membuat pengujian dasar.
-- [ ] Menjelaskan kode dan perubahan yang dibuat AI.
-
-**Batasan tambahan:**
-`[Isi jika ada]`
-
-## 6. Fitur yang Tidak Dibutuhkan
-
-Tuliskan fitur yang tidak perlu dibuat agar ruang lingkup proyek tetap jelas.
-
-- `[Fitur yang tidak dibutuhkan 1]`
-- `[Fitur yang tidak dibutuhkan 2]`
-
-## 7. Pemeriksaan Sebelum Vibe Coding (BOLEH DIUBAH SESUAI KEINGINAN PESERTA PELATIHAN)
-
-- [ ] Nama dan tujuan aplikasi sudah jelas.
-- [ ] Fitur utama sudah ditentukan.
-- [ ] Pilihan teknologi sudah diisi.
-- [ ] Kebutuhan autentikasi sudah ditentukan.
-- [ ] Batasan proyek sudah ditentukan.
-- [ ] Penggunaan `.env` dan `DATABASE_URL` sudah ditentukan.
-
-**Status spesifikasi:** Siap untuk diperiksa dan disetujui sebelum implementasi.
-
----
-
-## 8. Instruksi untuk Agy
-
-Baca dan pahami file `docs/prompts/00-project-spec.md` secara lengkap.
-
-Gunakan spesifikasi ini sebagai acuan utama pengembangan.
-
-1. Periksa apakah spesifikasi sudah lengkap dan konsisten.
-2. Tanyakan jika ada informasi penting yang belum jelas.
-3. Usulkan struktur folder sederhana sesuai teknologi yang dipilih.
-4. Jelaskan fungsi folder dan file utama.
-5. Jangan langsung membuat seluruh aplikasi sekaligus.
-6. Jangan membuat, mengubah, atau menghapus file sebelum saya menyetujui usulan struktur folder.
-7. Implementasikan aplikasi secara bertahap setelah mendapat persetujuan.
-8. Jelaskan perubahan kode dan cara menguji setiap tahap.
-9. Jangan mengganti teknologi atau menambahkan dependensi tanpa menjelaskan alasannya dan meminta persetujuan saya.
-10. Pastikan `DATABASE_URL` dibaca dari environment variable dan tidak pernah di-hardcode.
-11. Pastikan `.env` masuk ke `.gitignore`, sementara `.env.example` boleh disimpan di Git.
-12. Jangan menampilkan nilai rahasia dari `.env` pada log atau respons API.
+DATABASE_URL=postgres://username:password@localhost:5432/tts_db?sslmode=disable
+JWT_SECRET=rahasia-jwt-super-aman

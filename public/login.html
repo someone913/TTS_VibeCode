@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masuk - TTS Indonesia</title>
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("tts_theme");
+                const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const theme = saved || (prefersDark ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1 class="auth-brand">TTS Indonesia</h1>
+            <p class="auth-subtitle">Masuk untuk memulai petualangan teka-teki silang klasik & modern.</p>
+
+            <div id="auth-error" class="alert alert-error hidden"></div>
+            <div id="auth-success" class="alert alert-success hidden"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Nama Pengguna</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Masukkan nama pengguna" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Kata Sandi</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Masukkan kata sandi" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-primary">Masuk ke Permainan</button>
+            </form>
+
+            <div class="auth-footer">
+                Belum memiliki akun? <a href="/register">Daftar sekarang</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>

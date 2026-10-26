@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Indonesia - Teka-Teki Silang Klasik Modern</title>
+    <!-- Mencegah kedipan tema putih/gelap saat loading awal -->
+    <script>
+        (function() {
+            try {
+                const saved = localStorage.getItem("tts_theme");
+                const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const theme = saved || (prefersDark ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- CDN Canvas Confetti untuk Animasi Kemenangan -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand-wrapper">
+                <div class="brand-logo-tiles">
+                    <span class="logo-tile">T</span>
+                    <span class="logo-tile">T</span>
+                    <span class="logo-tile accent">S</span>
+                </div>
+                <div class="brand-headings">
+                    <span class="brand-title">TTS Indonesia</span>
+                    <span class="brand-subtitle">Teka-Teki Silang Interaktif</span>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <div class="user-badge">
+                    <span>Pemain:</span>
+                    <strong id="display-username">-</strong>
+                </div>
+
+                <div class="score-container" id="score-box" title="Total Poin Anda">
+                    <span class="score-icon">⭐</span>
+                    <span id="score-counter">0</span>
+                </div>
+
+                <button id="theme-toggle-btn" class="btn-action btn-theme" title="Ubah Mode Gelap/Terang">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Gelap</span>
+                </button>
+
+                <button id="leaderboard-btn" class="btn-action btn-leaderboard" title="Papan Peringkat">
+                    🏆 Peringkat
+                </button>
+
+                <button id="profile-btn" class="btn-action btn-profile" title="Profil & Statistik Pemain">
+                    👤 Profil
+                </button>
+
+                <button id="bgm-toggle-btn" class="btn-action btn-bgm" title="Toggle Musik Latar">
+                    🎵 Musik: OFF
+                </button>
+
+                <a href="/admin" id="admin-nav-btn" class="btn-action btn-admin-nav hidden" title="Buka Dashboard Admin">
+                    ⚙️ Admin
+                </a>
+
+                <button id="logout-btn" class="btn-ghost" title="Keluar">Keluar</button>
+            </div>
+        </header>
+
+        <!-- Toolbar Kontrol Permainan -->
+        <div class="app-toolbar">
+            <div class="board-info">
+                <span id="board-pill" class="board-id-pill">Memuat Papan...</span>
+                <span id="board-progress-text" class="board-progress-text">0 / 0 Kata Selesai</span>
+            </div>
+
+            <div class="toolbar-actions">
+                <div class="mode-select-wrap">
+                    <label for="mode-select">Alur:</label>
+                    <select id="mode-select" class="select-control">
+                        <option value="urut">Urut (P01, P02, ...)</option>
+                        <option value="acak">Acak (Random)</option>
+                    </select>
+                </div>
+
+                <button id="hint-btn" class="btn-action btn-hint" title="Buka 1 huruf acak (-10 Poin)">
+                    💡 Hint (-10)
+                </button>
+
+                <button id="next-board-btn" class="btn-action btn-next" title="Ganti Papan">
+                    🔄 Ganti Papan
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Game Area -->
+        <main class="game-main">
+            <!-- Papan Grid TTS -->
+            <section class="board-card">
+                <div class="board-viewport">
+                    <div id="tts-board">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <div class="board-tips">
+                    <span>💡 <strong>Tips:</strong> Klik kotak atau gunakan <strong>Panah Keyboard</strong>. Tekan <strong>Tab</strong> / <strong>Enter</strong> untuk ganti kata.</span>
+                </div>
+            </section>
+
+            <!-- Panel Soal (Mendatar & Menurun) -->
+            <aside class="clues-card">
+                <div class="clues-header">
+                    <span>Daftar Soal</span>
+                    <span id="clue-count-badge" style="font-size: 0.85rem; color: var(--primary); font-weight: 700;">10 Soal</span>
+                </div>
+
+                <div class="clues-body">
+                    <!-- Soal Mendatar -->
+                    <div class="clue-section">
+                        <div class="clue-section-title">
+                            <span>➡️</span> MENDATAR (HORIZONTAL)
+                        </div>
+                        <ul id="across-clues" class="clue-list">
+                            <!-- Diisi via JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Soal Menurun -->
+                    <div class="clue-section">
+                        <div class="clue-section-title">
+                            <span>⬇️</span> MENURUN (VERTICAL)
+                        </div>
+                        <ul id="down-clues" class="clue-list">
+                            <!-- Diisi via JS -->
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Modal Profil & Statistik Pemain -->
+    <div id="profile-modal" class="modal-overlay">
+        <div class="modal-card profile-card">
+            <div class="leaderboard-modal-header">
+                <h2>👤 Profil & Statistik Pemain</h2>
+                <button id="close-profile-btn" class="modal-close-btn">&times;</button>
+            </div>
+            
+            <div class="profile-header-badge">
+                <div class="profile-avatar">🎮</div>
+                <div>
+                    <h3 id="profile-modal-username" style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);">-</h3>
+                    <span id="profile-modal-role" class="profile-role-tag">Pemain</span>
+                </div>
+            </div>
+
+            <div class="profile-stats-grid">
+                <div class="profile-stat-box">
+                    <div class="pstat-label">⭐ Total Skor</div>
+                    <div class="pstat-value" id="profile-stat-score">0</div>
+                </div>
+                <div class="profile-stat-box">
+                    <div class="pstat-label">🏅 Peringkat Global</div>
+                    <div class="pstat-value" id="profile-stat-rank" style="color: var(--primary-light);">#1</div>
+                </div>
+                <div class="profile-stat-box">
+                    <div class="pstat-label">🧩 Papan Selesai</div>
+                    <div class="pstat-value" id="profile-stat-boards">0</div>
+                </div>
+                <div class="profile-stat-box">
+                    <div class="pstat-label">✍️ Kata Terpecahkan</div>
+                    <div class="pstat-value" id="profile-stat-words">0</div>
+                </div>
+                <div class="profile-stat-box">
+                    <div class="pstat-label">💡 Bantuan / Hint</div>
+                    <div class="pstat-value" id="profile-stat-hints" style="color: #f59e0b;">0 Kali</div>
+                </div>
+                <div class="profile-stat-box">
+                    <div class="pstat-label">📅 Bergabung Sejak</div>
+                    <div class="pstat-value" id="profile-stat-date" style="font-size: 1.05rem; color: var(--text-muted);">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Papan Peringkat (Leaderboard) -->
+    <div id="leaderboard-modal" class="modal-overlay">
+        <div class="modal-card leaderboard-card">
+            <div class="leaderboard-modal-header">
+                <h2>🏆 Papan Peringkat Pemain</h2>
+                <button id="close-leaderboard-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <p class="leaderboard-modal-sub">Daftar 10 pemain terbaik dengan skor dan pencapaian tertinggi</p>
+
+            <div class="leaderboard-table-wrap">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Rank</th>
+                            <th>Pemain</th>
+                            <th style="text-align: center;">Kata Benar</th>
+                            <th style="text-align: center;">Papan</th>
+                            <th style="text-align: right;">Total Skor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Diisi via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Kemenangan (Victory Popup) -->
+    <div id="victory-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="victory-icon">🏆</div>
+            <h2 class="victory-title">Papan Selesai!</h2>
+            <p class="victory-desc">Luar biasa! Seluruh kata pada papan ini berhasil Anda pecahkan.</p>
+
+            <div class="victory-stats">
+                <div class="stat-item">
+                    <h4>Papan</h4>
+                    <span id="modal-board-id">-</span>
+                </div>
+                <div class="stat-item">
+                    <h4>Total Skor</h4>
+                    <span id="modal-total-score">0</span>
+                </div>
+            </div>
+
+            <button id="modal-next-btn" class="btn-primary" style="margin-top: 0;">Lanjut ke Papan Berikutnya 🚀</button>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/tts.js"></script>
+</body>
+</html>

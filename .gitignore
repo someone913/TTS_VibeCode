@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Go binaries and builds
+app
+app.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+tmp/
