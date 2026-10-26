@@ -1409,37 +1409,47 @@ body {
 
 
 /* ==========================================================================
-   Tournament Mode, Inventory & Attack SFX Styles
+   🏆 TOURNAMENT HUD (Compact, Premium & Single Strip)
    ========================================================================== */
 
-/* 🏆 Tournament Indicator Banner */
-.tournament-banner {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(56, 189, 248, 0.1) 100%);
-    border: 1px solid rgba(245, 158, 11, 0.35);
+.tournament-hud {
+    background: var(--bg-surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--card-shadow);
     border-radius: var(--radius-lg);
-    padding: 12px 20px;
+    padding: 10px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
     flex-wrap: wrap;
-    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
     transition: var(--transition-base);
 }
 
-.t-banner-left {
+.t-hud-left {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.t-live-pulse {
-    width: 10px;
-    height: 10px;
+.t-live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+
+.t-live-dot {
+    width: 8px;
+    height: 8px;
     background: #ef4444;
     border-radius: 50%;
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
     animation: livePulse 1.6s infinite;
 }
 
@@ -1458,89 +1468,76 @@ body {
     }
 }
 
-.t-banner-title {
-    font-size: 1.05rem;
+.t-live-badge {
+    font-size: 0.76rem;
     font-weight: 800;
-    color: var(--warning-light);
-    letter-spacing: -0.2px;
+    color: #f87171;
+    letter-spacing: 0.5px;
 }
 
-[data-theme="light"] .t-banner-title {
-    color: #b45309;
-}
-
-.t-banner-sub {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.t-online-chip {
+.t-online-pill {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: var(--bg-surface-subtle);
-    border: 1px solid var(--border-medium);
-    padding: 6px 14px;
+    border: 1px solid var(--border-subtle);
+    padding: 5px 12px;
     border-radius: 20px;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
 }
 
-.online-indicator-dot {
-    width: 8px;
-    height: 8px;
-    background: #10b981;
-    border-radius: 50%;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
-}
-
-/* 🎒 Amunisi / Inventory Slots Bar */
-.inventory-bar {
-    background: var(--bg-surface);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    box-shadow: var(--card-shadow);
-    border-radius: var(--radius-lg);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    transition: var(--transition-base);
-}
-
-.inventory-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.inv-title {
-    font-size: 0.95rem;
-    font-weight: 800;
+.t-online-pill strong {
     color: var(--text-main);
 }
 
-.inv-desc {
-    font-size: 0.8rem;
+.dot-online {
+    width: 7px;
+    height: 7px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+}
+
+.t-hud-center {
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    text-align: center;
+    flex: 1;
+}
+
+@media (max-width: 900px) {
+    .t-hud-center {
+        display: none;
+    }
+}
+
+.t-hud-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.t-ammo-label {
+    font-size: 0.84rem;
+    font-weight: 700;
     color: var(--text-muted);
 }
 
-.inventory-slots {
+.t-ammo-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
-.inv-item-btn {
+.ammo-btn {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
+    gap: 6px;
+    padding: 6px 14px;
     border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: 0.92rem;
+    font-size: 0.86rem;
     font-weight: 700;
     border: 1px solid var(--border-medium);
     background: var(--bg-surface-subtle);
@@ -1548,74 +1545,80 @@ body {
     cursor: not-allowed;
     transition: var(--transition-base);
     user-select: none;
-    opacity: 0.6;
+    opacity: 0.55;
 }
 
-.inv-item-btn.has-stock {
+.ammo-btn.has-stock {
     opacity: 1;
     cursor: pointer;
-    transform: translateY(0);
 }
 
-.inv-item-btn.has-stock:hover {
-    transform: translateY(-2px);
-}
-
-.inv-item-btn.has-stock:active {
-    transform: scale(0.97);
-}
-
-/* Bom Amunisi Button */
-.inv-bomb.has-stock {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.25));
+.ammo-bomb.has-stock {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.28));
     border-color: rgba(239, 68, 68, 0.6);
     color: #fca5a5;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
     animation: bombGlowPulse 2s infinite alternate;
 }
 
-@keyframes bombGlowPulse {
-    from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
-    to { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+[data-theme="light"] .ammo-bomb.has-stock {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #b91c1c;
 }
 
-/* Freeze Amunisi Button */
-.inv-freeze.has-stock {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(2, 132, 199, 0.25));
+.ammo-freeze.has-stock {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(2, 132, 199, 0.28));
     border-color: rgba(56, 189, 248, 0.6);
     color: #7dd3fc;
-    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
     animation: freezeGlowPulse 2s infinite alternate;
 }
 
-@keyframes freezeGlowPulse {
-    from { box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
-    to { box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); }
+[data-theme="light"] .ammo-freeze.has-stock {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #0369a1;
 }
 
-.inv-emoji {
-    font-size: 1.25rem;
+.ammo-btn.has-stock:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
 }
 
-.inv-count-badge {
+.ammo-btn:active.has-stock {
+    transform: scale(0.96);
+}
+
+.ammo-count {
     background: var(--bg-surface-elevated);
     border: 1px solid var(--border-medium);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.82rem;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.78rem;
     font-weight: 800;
 }
 
-.inv-bomb.has-stock .inv-count-badge {
+.ammo-bomb.has-stock .ammo-count {
     background: #ef4444;
     color: #ffffff;
     border-color: #dc2626;
 }
 
-.inv-freeze.has-stock .inv-count-badge {
+.ammo-freeze.has-stock .ammo-count {
     background: #0284c7;
     color: #ffffff;
     border-color: #0369a1;
+}
+
+@keyframes bombGlowPulse {
+    from { box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+    to { box-shadow: 0 0 18px rgba(239, 68, 68, 0.65); }
+}
+
+@keyframes freezeGlowPulse {
+    from { box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+    to { box-shadow: 0 0 18px rgba(56, 189, 248, 0.65); }
 }
 
 /* 🎯 Soal Ber-Item Icon Badge */

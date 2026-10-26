@@ -15,7 +15,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=3.5">
     <!-- CDN Canvas Confetti untuk Animasi Kemenangan -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
@@ -81,40 +81,38 @@
             </div>
         </header>
 
-        <!-- 🏆 Banner Indikator Mode Turnamen Aktif -->
-        <div class="tournament-banner" id="tournament-banner">
-            <div class="t-banner-left">
-                <span class="t-live-pulse"></span>
-                <span class="t-banner-title">🏆 Mode Turnamen Aktif</span>
-                <span class="t-banner-sub">Pecahkan soal berikon untuk amunisi item, serang lawan dengan Bom 💣 atau Freeze ❄️!</span>
-            </div>
-            <div class="t-banner-right">
-                <span class="t-online-chip">
-                    <span class="online-indicator-dot"></span>
-                    <span>Pemain Online:</span>
+        <!-- 🏆 Arena Turnamen & Amunisi HUD (Sleek Single Strip) -->
+        <div class="tournament-hud" id="tournament-hud">
+            <div class="t-hud-left">
+                <div class="t-live-indicator">
+                    <span class="t-live-dot"></span>
+                    <span class="t-live-badge">TURNAMEN LIVE</span>
+                </div>
+                <div class="t-online-pill" title="Pemain yang sedang aktif di arena turnamen">
+                    <span class="dot-online"></span>
+                    <span>Online:</span>
                     <strong id="online-players-count">1</strong>
-                </span>
+                </div>
             </div>
-        </div>
 
-        <!-- 🎒 Panel Amunisi / Inventori Item -->
-        <div class="inventory-bar">
-            <div class="inventory-info">
-                <span class="inv-title">🎒 Amunisi Turnamen:</span>
-                <span class="inv-desc">Klik item amunisi untuk memilih target dan melempar serangan</span>
+            <div class="t-hud-center">
+                <span>Pecahkan soal berikon 💣 atau ❄️ untuk amunisi serangan!</span>
             </div>
-            <div class="inventory-slots">
-                <button id="item-btn-bomb" class="inv-item-btn inv-bomb" disabled title="Pecahkan soal bertanda 💣 untuk mendapatkan Bom">
-                    <span class="inv-emoji">💣</span>
-                    <span class="inv-name">Bom</span>
-                    <span class="inv-count-badge" id="count-bomb">0</span>
-                </button>
 
-                <button id="item-btn-freeze" class="inv-item-btn inv-freeze" disabled title="Pecahkan soal bertanda ❄️ untuk mendapatkan Freeze">
-                    <span class="inv-emoji">❄️</span>
-                    <span class="inv-name">Freeze</span>
-                    <span class="inv-count-badge" id="count-freeze">0</span>
-                </button>
+            <div class="t-hud-right">
+                <span class="t-ammo-label">Amunisi:</span>
+                <div class="t-ammo-group">
+                    <button id="item-btn-bomb" class="ammo-btn ammo-bomb" disabled title="Bom: Goyang & kaburkan papan lawan selama 5 detik!">
+                        <span>💣</span>
+                        <span>Bom</span>
+                        <span class="ammo-count" id="count-bomb">0</span>
+                    </button>
+                    <button id="item-btn-freeze" class="ammo-btn ammo-freeze" disabled title="Freeze: Bekukan input kotak lawan selama 5 detik!">
+                        <span>❄️</span>
+                        <span>Freeze</span>
+                        <span class="ammo-count" id="count-freeze">0</span>
+                    </button>
+                </div>
             </div>
         </div>
 

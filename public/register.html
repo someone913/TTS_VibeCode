@@ -14,7 +14,7 @@
             } catch (e) {}
         })();
     </script>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/style.css?v=2.2">
 </head>
 <body>
     <div class="auth-wrapper">
@@ -36,7 +36,12 @@
                     <input type="password" id="password" name="password" class="form-input" placeholder="Masukkan kata sandi (min. 6 karakter)" required autocomplete="new-password">
                 </div>
 
-                <button type="submit" class="btn-primary">Daftar Akun Baru</button>
+                <div class="form-group">
+                    <label for="confirm_password">Konfirmasi Kata Sandi</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Ulangi kata sandi di atas" required autocomplete="new-password">
+                </div>
+
+                <button type="submit" id="register-submit-btn" class="btn-primary">Daftar Akun Baru</button>
             </form>
 
             <div class="auth-footer">

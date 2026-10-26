@@ -31,6 +31,14 @@ func main() {
 	// 4. Inisialisasi router Gin
 	r := gin.Default()
 
+	// Mencegah cache browser untuk file CSS/JS agar tampilan selalu terbarukan
+	r.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.Next()
+	})
+
 	// 5. Sajikan file statis frontend (public)
 	r.Static("/public", "./public")
 	r.Static("/css", "./public/css")
