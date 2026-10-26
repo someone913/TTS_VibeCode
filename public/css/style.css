@@ -1866,3 +1866,345 @@ body {
     border-radius: var(--radius-md);
     border: 1px dashed var(--border-medium);
 }
+
+/* ==========================================================================
+   ⚔️ MODE TANTANGAN, DUEL 1v1 & ROOM MABAR (1 PAPAN SAMA)
+   ========================================================================== */
+
+/* Tombol Buka Lobby Tantang Duel di Header HUD */
+.btn-duel {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    padding: 7px 16px !important;
+    border-radius: var(--radius-full, 9999px) !important;
+    box-shadow: 0 3px 12px rgba(234, 88, 12, 0.4) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: var(--transition-base) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    font-size: 0.85rem !important;
+}
+
+.btn-duel:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 6px 18px rgba(234, 88, 12, 0.55) !important;
+    filter: brightness(1.1);
+}
+
+.btn-duel:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* ⚔️ Bilah Live Match Status Bar (Aktif Saat Duel / Room Berlangsung) */
+.match-status-bar {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border: 2px solid #f59e0b;
+    border-radius: var(--radius-md);
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25);
+    animation: fadeInDown 0.3s ease;
+    flex-wrap: wrap;
+}
+
+[data-theme="light"] .match-status-bar {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #f59e0b;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.18);
+}
+
+.match-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.match-badge {
+    background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: var(--radius-full, 9999px);
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+    animation: pulseGlow 1.8s infinite;
+}
+
+.match-room-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.match-bar-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 280px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.match-bar-right {
+    flex-shrink: 0;
+}
+
+.btn-leave-match {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    padding: 6px 14px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-sm) !important;
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.btn-leave-match:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #ef4444 !important;
+    transform: scale(1.02);
+}
+
+/* Item Progress Bar Tiap Pemain di Match Bar */
+.player-progress-item {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 170px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .player-progress-item {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+.player-progress-item.is-me {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.player-progress-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-progress-bar-wrap {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+
+[data-theme="light"] .player-progress-bar-wrap {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.player-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+    border-radius: 9999px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.player-progress-item.is-me .player-progress-bar-fill {
+    background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
+}
+
+.player-progress-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+/* 👥 Modal Lobby Tantangan & Room Turnamen */
+.lobby-card {
+    max-width: 620px !important;
+    text-align: left !important;
+    padding: 28px !important;
+}
+
+.lobby-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-medium);
+    padding-bottom: 10px;
+}
+
+.lobby-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.92rem;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-base);
+    font-family: inherit;
+}
+
+.lobby-tab-btn:hover {
+    color: var(--text-main);
+    background: var(--bg-surface-subtle);
+}
+
+.lobby-tab-btn.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.35);
+}
+
+.lobby-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Kartu Room di Lobby Mabar */
+.room-card-item {
+    background: var(--bg-surface-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: var(--transition-base);
+    margin-bottom: 10px;
+}
+
+.room-card-item:hover {
+    background: var(--bg-surface-elevated);
+    border-color: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.room-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.room-card-name {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+.room-card-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.room-card-badge {
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.room-status-waiting {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.room-status-playing {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.btn-join-room {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #ffffff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3);
+    transition: var(--transition-base);
+}
+
+.btn-join-room:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.btn-start-room {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+    transition: var(--transition-base);
+}
+
+.btn-start-room:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+    }
+    50% {
+        box-shadow: 0 2px 16px rgba(220, 38, 38, 0.8);
+    }
+}
+

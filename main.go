@@ -68,8 +68,9 @@ func main() {
 	}
 	r.GET("/api/leaderboard", controllers.GetLeaderboard)
 
-	// ⚡ 7. Endpoint WebSocket Mode Turnamen Real-Time
+	// ⚡ 7. Endpoint WebSocket & Status Mode Turnamen Real-Time
 	r.GET("/api/ws/tournament", controllers.HandleTournamentWS)
+	r.GET("/api/tournament/status", controllers.GetOnlineTournamentStatus)
 
 	// 8. Rute API Terproteksi (Wajib Token JWT Pemain)
 	protectedApi := r.Group("/api", middleware.RequireAuth())

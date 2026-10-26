@@ -43,6 +43,11 @@ document.addEventListener("DOMContentLoaded", () => {
     let bombTimerTimeout = null;
     let attackToastInterval = null;
 
+    // State Match Bersama / Duel / Room Mabar (1 Papan Sama)
+    let activeMatchRoom = null;
+    let availableRooms = [];
+    let incomingChallenge = null;
+
     // Inventori Amunisi Pemain
     const inventory = {
         bomb: 0,
@@ -67,10 +72,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Elemen Turnamen & Inventori
     const onlineCountEl = document.getElementById("online-players-count");
+    const openPlayersBtn = document.getElementById("open-players-btn");
+    const openLobbyBtn = document.getElementById("open-lobby-btn");
     const itemBtnBomb = document.getElementById("item-btn-bomb");
     const itemBtnFreeze = document.getElementById("item-btn-freeze");
     const countBombEl = document.getElementById("count-bomb");
     const countFreezeEl = document.getElementById("count-freeze");
+
+    // Bilah Status Pertandingan Aktif (1 Papan Bersama)
+    const matchStatusBar = document.getElementById("match-status-bar");
+    const matchRoomName = document.getElementById("match-room-name");
+    const matchPlayersProgress = document.getElementById("match-players-progress");
+    const leaveMatchBtn = document.getElementById("leave-match-btn");
+
+    // Modal Lobby Tantangan & Room
+    const lobbyModal = document.getElementById("lobby-modal");
+    const closeLobbyBtn = document.getElementById("close-lobby-btn");
+    const tabDuelBtn = document.getElementById("tab-duel-btn");
+    const tabRoomsBtn = document.getElementById("tab-rooms-btn");
+    const lobbyDuelPanel = document.getElementById("lobby-duel-panel");
+    const lobbyRoomsPanel = document.getElementById("lobby-rooms-panel");
+    const refreshOnlineBtn = document.getElementById("refresh-online-btn");
+    const lobbyPlayersList = document.getElementById("lobby-players-list");
+    const openCreateRoomBtn = document.getElementById("open-create-room-btn");
+    const lobbyRoomsList = document.getElementById("lobby-rooms-list");
+
+    // Modal Tantangan Masuk
+    const challengeModal = document.getElementById("challenge-modal");
+    const challengeModalMsg = document.getElementById("challenge-modal-msg");
+    const acceptChallengeBtn = document.getElementById("accept-challenge-btn");
+    const rejectChallengeBtn = document.getElementById("reject-challenge-btn");
+
+    // Modal Buat Kamar Mabar Baru
+    const createRoomModal = document.getElementById("create-room-modal");
+    const closeCreateRoomBtn = document.getElementById("close-create-room-btn");
+    const createRoomForm = document.getElementById("create-room-form");
+    const roomNameInput = document.getElementById("room-name-input");
+    const roomMaxPlayers = document.getElementById("room-max-players");
+
+    // Modal Hasil Pertandingan Turnamen (Match Over)
+    const matchOverModal = document.getElementById("match-over-modal");
+    const matchOverTitle = document.getElementById("match-over-title");
+    const matchOverDesc = document.getElementById("match-over-desc");
+    const matchOverScoreboard = document.getElementById("match-over-scoreboard");
+    const closeMatchOverBtn = document.getElementById("close-match-over-btn");
 
     // Modal Pilih Target
     const targetModal = document.getElementById("target-modal");
@@ -502,7 +547,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* ==========================================================================
-       Infrastruktur WebSockets (Mode Turnamen Real-Time)
+       Infrastruktur WebSockets (Mode Turnamen Real-Time & Tantang Duel)
        ========================================================================== */
     function initTournamentWebSocket() {
         if (!token) return;
@@ -515,6 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             tournamentWS.onopen = () => {
                 console.log("[Tournament WS] Terhubung ke arena turnamen real-time");
+                fetchTournamentStatus();
             };
 
             tournamentWS.onmessage = (event) => {
@@ -539,19 +585,158 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Polling status turnamen sebagai fallback & heartbeat ping
+    async function fetchTournamentStatus() {
+        try {
+            const res = await apiFetch("/api/tournament/status");
+            if (res) {
+                if (Array.isArray(res.online_players)) {
+                    onlinePlayers = res.online_players;
+                    if (onlineCountEl) {
+                        onlineCountEl.textContent = onlinePlayers.length;
+                    }
+                }
+                if (Array.isArray(res.rooms)) {
+                    availableRooms = res.rooms;
+                }
+                if (lobbyModal && lobbyModal.classList.contains("show")) {
+                    renderLobbyPlayers();
+                    renderLobbyRooms();
+                }
+                if (targetModal && targetModal.classList.contains("show")) {
+                    renderTargetPlayers();
+                }
+            }
+        } catch (err) {
+            // Silently ignore background polling errors
+        }
+
+        if (tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+            tournamentWS.send(JSON.stringify({ action: "ping" }));
+        }
+    }
+
+    // Heartbeat berkala setiap 8 detik
+    setInterval(fetchTournamentStatus, 8000);
+
     function handleTournamentWSMessage(data) {
-        // 1. Pembaruan Daftar Pemain Online
+        // 1. Pembaruan Daftar Pemain Online & Rooms
         if (data.type === "online_players") {
             onlinePlayers = data.players || [];
+            if (data.rooms) {
+                availableRooms = data.rooms;
+            }
             if (onlineCountEl) {
                 onlineCountEl.textContent = onlinePlayers.length;
             }
-            // Jika modal target sedang terbuka, perbarui daftarnya
+            if (lobbyModal && lobbyModal.classList.contains("show")) {
+                renderLobbyPlayers();
+                renderLobbyRooms();
+            }
             if (targetModal && targetModal.classList.contains("show")) {
                 renderTargetPlayers();
             }
         }
-        // 2. Menerima Serangan dari Pemain Lain
+        // 2. Tantangan Duel Masuk dari Pemain Lain
+        else if (data.type === "challenge_received") {
+            incomingChallenge = {
+                from_user: data.from_user,
+                board_id: data.board_id
+            };
+            if (challengeModalMsg) {
+                challengeModalMsg.innerHTML = `⚔️ Pemain <strong>${data.from_user}</strong> menantang Anda bertanding di <strong>Papan ${data.board_id}</strong>!<br><br>Papan dan soal akan sama persis. Apakah Anda menerima tantangan duel ini?`;
+            }
+            if (challengeModal) {
+                challengeModal.classList.add("show");
+            }
+            playHintSound();
+        }
+        // 3. Konfirmasi Tantangan Terkirim
+        else if (data.type === "challenge_sent") {
+            showAttackToast("⏳", "Tantangan Terkirim", data.message || "Menunggu jawaban dari lawan...", 4);
+        }
+        // 4. Tantangan Ditolak
+        else if (data.type === "challenge_rejected") {
+            showAttackToast("❌", "Tantangan Ditolak", data.message || "Lawan menolak tantangan duel Anda.", 4);
+        }
+        // 5. Kesalahan Tantangan
+        else if (data.type === "challenge_error") {
+            alert(data.message || "Gagal mengirim tantangan.");
+        }
+        // 6. Pertandingan Dimulai (Duel 1v1 atau Room Mabar di Papan Sama)
+        else if (data.type === "match_start") {
+            activeMatchRoom = data.room || {
+                id: data.room_id,
+                board_id: data.board_id,
+                name: data.room_name || "Duel 1 vs 1",
+                players: {}
+            };
+
+            if (matchStatusBar) {
+                matchStatusBar.classList.remove("hidden");
+            }
+            if (matchRoomName) {
+                matchRoomName.textContent = activeMatchRoom.name || `Tanding Papan ${data.board_id}`;
+            }
+
+            renderMatchProgress(activeMatchRoom);
+
+            // Muat papan yang sama persis untuk semua pemain!
+            loadBoard(data.board_id);
+
+            // Tutup semua modal lobby yang terbuka
+            if (lobbyModal) lobbyModal.classList.remove("show");
+            if (challengeModal) challengeModal.classList.remove("show");
+            if (createRoomModal) createRoomModal.classList.remove("show");
+
+            showAttackToast("⚔️", "PERTANDINGAN DIMULAI!", data.message || `Tanding di Papan ${data.board_id}!`, 4);
+            playWordSuccessSound();
+        }
+        // 7. Live Siaran Progres Lawan di Room
+        else if (data.type === "progress_broadcast") {
+            updateOpponentProgress(data.from_user, data.words_solved, data.total_words);
+        }
+        // 8. Pertandingan Selesai / Juara Ditentukan
+        else if (data.type === "match_over") {
+            showMatchOver(data.winner, data.message);
+        }
+        // 9. Status Kamar Baru Dibuat
+        else if (data.type === "room_created") {
+            activeMatchRoom = data.room;
+            if (createRoomModal) createRoomModal.classList.remove("show");
+            showAttackToast("🏠", "Kamar Berhasil Dibuat", data.message || "Menunggu pemain bergabung...", 4);
+            renderLobbyRooms();
+        }
+        // 10. Status Berhasil Masuk Kamar
+        else if (data.type === "room_joined") {
+            activeMatchRoom = data.room;
+            showAttackToast("✅", "Berhasil Masuk Kamar", data.message || "Menunggu pertandingan dimulai...", 4);
+            renderLobbyRooms();
+        }
+        // 11. Pembaruan Status Kamar
+        else if (data.type === "room_updated") {
+            if (data.room) {
+                if (activeMatchRoom && activeMatchRoom.id === data.room.id) {
+                    activeMatchRoom = data.room;
+                    renderMatchProgress(activeMatchRoom);
+                }
+                const rIdx = availableRooms.findIndex(r => r.id === data.room.id);
+                if (rIdx >= 0) availableRooms[rIdx] = data.room;
+                else availableRooms.push(data.room);
+
+                if (lobbyModal && lobbyModal.classList.contains("show")) {
+                    renderLobbyRooms();
+                }
+            }
+            if (data.message) {
+                showAttackToast("ℹ️", "Info Room", data.message, 3);
+            }
+        }
+        // 12. Kesalahan Kamar
+        else if (data.type === "room_error") {
+            alert(data.message || "Terjadi kesalahan pada room");
+        }
+        // 13. Menerima Serangan dari Pemain Lain
         else if (data.type === "attack_received") {
             const fromUser = data.from_user || "Pemain Lain";
             const duration = data.duration || 5;
@@ -562,12 +747,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 applyBombAttack(fromUser, duration);
             }
         }
-        // 3. Konfirmasi Serangan Berhasil Dikirim
+        // 14. Konfirmasi Serangan Berhasil Dikirim
         else if (data.type === "attack_success") {
             const itemEmoji = data.item_type === "bomb" ? "Bom 💣" : "Freeze ❄️";
             showAttackToast("🚀", "Serangan Berhasil!", `Kamu berhasil melemparkan ${itemEmoji} ke ${data.target_user}!`, 3);
         }
-        // 4. Kesalahan Serangan
+        // 15. Kesalahan Serangan
         else if (data.type === "attack_error") {
             if (targetModalAlert) {
                 targetModalAlert.textContent = data.message || "Gagal mengirim serangan";
@@ -576,7 +761,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert(data.message || "Gagal mengirim serangan");
             }
         }
-        // 5. Pengumuman Arena Turnamen
+        // 16. Pengumuman Arena Turnamen
         else if (data.type === "tournament_event") {
             console.log("[Tournament Event]", data.message);
         }
@@ -783,6 +968,420 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* ==========================================================================
+       Mode Tantangan Duel 1v1 & Kamar Mabar 1 Papan Sama
+       ========================================================================== */
+
+    // 1. Tampilkan Bilah Status Pertandingan & Progress Bar Tiap Pemain
+    function renderMatchProgress(room) {
+        if (!matchPlayersProgress) return;
+        matchPlayersProgress.innerHTML = "";
+
+        const myUsername = (getUser() ? getUser().username : "").toLowerCase();
+        const playersObj = room && room.players ? room.players : {};
+        const playerKeys = Object.keys(playersObj);
+
+        if (playerKeys.length === 0) {
+            const selfItem = createPlayerProgressItem(getUser() ? getUser().username : "Anda", completedWordsCount, boardWords.length || 10, true);
+            matchPlayersProgress.appendChild(selfItem);
+            return;
+        }
+
+        playerKeys.forEach((uname) => {
+            const p = playersObj[uname];
+            const isMe = uname.toLowerCase() === myUsername;
+            const wordsSolved = isMe ? completedWordsCount : (p ? p.words_solved : 0);
+            const totalWords = p && p.total_words > 0 ? p.total_words : (boardWords.length || 10);
+            const item = createPlayerProgressItem(uname, wordsSolved, totalWords, isMe);
+            matchPlayersProgress.appendChild(item);
+        });
+    }
+
+    function createPlayerProgressItem(uname, wordsSolved, totalWords, isMe) {
+        const wrap = document.createElement("div");
+        wrap.className = `player-progress-item ${isMe ? "is-me" : ""}`;
+        wrap.id = `progress-item-${uname.toLowerCase()}`;
+
+        const percent = totalWords > 0 ? Math.min(100, Math.round((wordsSolved / totalWords) * 100)) : 0;
+
+        wrap.innerHTML = `
+            <div class="player-progress-name" title="${uname}">
+                <span>${isMe ? "⭐" : "👤"}</span>
+                <span>${isMe ? "Anda" : uname}</span>
+            </div>
+            <div class="player-progress-bar-wrap">
+                <div class="player-progress-bar-fill" id="fill-${uname.toLowerCase()}" style="width: ${percent}%;"></div>
+            </div>
+            <span class="player-progress-score" id="score-text-${uname.toLowerCase()}">${wordsSolved}/${totalWords}</span>
+        `;
+        return wrap;
+    }
+
+    function updateOpponentProgress(uname, wordsSolved, totalWords) {
+        const unameLower = uname.toLowerCase();
+        const fillEl = document.getElementById(`fill-${unameLower}`);
+        const scoreTextEl = document.getElementById(`score-text-${unameLower}`);
+
+        const percent = totalWords > 0 ? Math.min(100, Math.round((wordsSolved / totalWords) * 100)) : 0;
+
+        if (fillEl) {
+            fillEl.style.width = `${percent}%`;
+        }
+        if (scoreTextEl) {
+            scoreTextEl.textContent = `${wordsSolved}/${totalWords}`;
+        }
+
+        // Jika bar pemain belum terdaftar di DOM, re-render seluruh bar
+        if (!fillEl && activeMatchRoom) {
+            if (!activeMatchRoom.players) activeMatchRoom.players = {};
+            activeMatchRoom.players[uname] = { username: uname, words_solved: wordsSolved, total_words: totalWords };
+            renderMatchProgress(activeMatchRoom);
+        }
+    }
+
+    // 2. Tampilkan Hasil Pertandingan (Kemenangan Juara)
+    function showMatchOver(winner, message) {
+        const myUsername = (getUser() ? getUser().username : "").toLowerCase();
+        const isMeWinner = winner && winner.toLowerCase() === myUsername;
+
+        if (matchOverTitle) {
+            matchOverTitle.textContent = isMeWinner ? "🎉 KAMU JUARA PERTAMA!" : "⚔️ Pertandingan Selesai!";
+            matchOverTitle.style.color = isMeWinner ? "#10b981" : "#f59e0b";
+        }
+
+        if (matchOverDesc) {
+            matchOverDesc.innerHTML = isMeWinner
+                ? `Selamat! Anda berhasil memecahkan seluruh kata di papan ini lebih cepat dari lawan!`
+                : `Pemain <strong>${winner}</strong> berhasil menyelesaikan semua kata terlebih dahulu.`;
+        }
+
+        if (matchOverScoreboard && activeMatchRoom) {
+            let playersHtml = `
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Pemain</th>
+                            <th>Status Akhir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            const players = activeMatchRoom.players ? Object.keys(activeMatchRoom.players) : [winner];
+            players.forEach((pName) => {
+                const isWin = pName.toLowerCase() === (winner ? winner.toLowerCase() : "");
+                playersHtml += `
+                    <tr style="${isWin ? 'background: rgba(16, 185, 129, 0.15); font-weight: 700;' : ''}">
+                        <td>${isWin ? '👑 ' : '👤 '}${pName}</td>
+                        <td>${isWin ? '<strong style="color: #10b981;">Juara 1 🏆</strong>' : 'Selesai'}</td>
+                    </tr>
+                `;
+            });
+
+            playersHtml += `</tbody></table>`;
+            matchOverScoreboard.innerHTML = playersHtml;
+        }
+
+        if (matchOverModal) {
+            matchOverModal.classList.add("show");
+        }
+
+        if (isMeWinner) {
+            launchCelebration();
+        } else {
+            playWrongSound();
+        }
+    }
+
+    // 3. Render Daftar Pemain Online di Tab Duel
+    function renderLobbyPlayers() {
+        if (!lobbyPlayersList) return;
+        lobbyPlayersList.innerHTML = "";
+
+        const me = getUser();
+        const myName = me ? me.username.toLowerCase() : "";
+        const otherPlayers = onlinePlayers.filter((p) => p.toLowerCase() !== myName);
+
+        if (otherPlayers.length === 0) {
+            lobbyPlayersList.innerHTML = `
+                <div class="no-targets-notice">
+                    <p style="font-weight: 700; margin-bottom: 6px;">Belum ada pemain lain yang online</p>
+                    <p style="font-size: 0.85rem;">Buka browser baru di mode Incognito atau ajak teman login untuk bertanding di papan yang sama!</p>
+                </div>
+            `;
+            return;
+        }
+
+        otherPlayers.forEach((playerName) => {
+            const row = document.createElement("div");
+            row.className = "target-player-row";
+            row.innerHTML = `
+                <div class="target-player-name">
+                    <span style="font-size: 1.3rem;">👤</span>
+                    <span>${playerName}</span>
+                    <span style="font-size: 0.72rem; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 9999px; font-weight: 700;">ONLINE</span>
+                </div>
+                <button class="btn-action btn-duel" style="font-size: 0.82rem; padding: 6px 14px;">
+                    ⚔️ Tantang Duel
+                </button>
+            `;
+
+            const challengeBtn = row.querySelector(".btn-duel");
+            challengeBtn.addEventListener("click", () => {
+                sendChallenge(playerName);
+            });
+
+            lobbyPlayersList.appendChild(row);
+        });
+    }
+
+    function sendChallenge(targetUsername) {
+        if (!tournamentWS || tournamentWS.readyState !== WebSocket.OPEN) {
+            alert("Koneksi turnamen WebSocket terputus. Silakan muat ulang halaman.");
+            return;
+        }
+
+        const currentBoardId = currentBoard ? currentBoard.id : "";
+        tournamentWS.send(JSON.stringify({
+            action: "challenge_player",
+            target_user: targetUsername,
+            board_id: currentBoardId
+        }));
+
+        showAttackToast("⏳", "Tantangan Dikirim", `Tantangan duel dikirim ke ${targetUsername}. Menunggu respon...`, 4);
+        if (lobbyModal) {
+            lobbyModal.classList.remove("show");
+        }
+    }
+
+    // 4. Render Kamar Turnamen Mabar di Tab Kamar
+    function renderLobbyRooms() {
+        if (!lobbyRoomsList) return;
+        lobbyRoomsList.innerHTML = "";
+
+        if (!availableRooms || availableRooms.length === 0) {
+            lobbyRoomsList.innerHTML = `
+                <div class="no-targets-notice">
+                    <p style="font-weight: 700; margin-bottom: 6px;">Belum ada kamar turnamen aktif</p>
+                    <p style="font-size: 0.85rem;">Klik tombol "➕ Buat Kamar Mabar" di atas untuk membuat kamar mabar hingga 5 pemain di papan yang sama!</p>
+                </div>
+            `;
+            return;
+        }
+
+        const myName = (getUser() ? getUser().username : "").toLowerCase();
+
+        availableRooms.forEach((room) => {
+            const row = document.createElement("div");
+            row.className = "room-card-item";
+
+            const playerCount = room.players ? Object.keys(room.players).length : 1;
+            const isHost = room.host.toLowerCase() === myName;
+            const isMember = room.players && room.players[getUser() ? getUser().username : ""];
+            const isPlaying = room.status === "playing";
+
+            let actionBtnHtml = "";
+            if (isHost && !isPlaying) {
+                actionBtnHtml = `<button class="btn-start-room">🔥 Mulai Tanding</button>`;
+            } else if (isMember) {
+                actionBtnHtml = `<span style="font-weight: 700; color: #10b981; font-size: 0.85rem;">Sudah Masuk ✅</span>`;
+            } else if (!isPlaying && playerCount < room.max_players) {
+                actionBtnHtml = `<button class="btn-join-room">Gabung (${playerCount}/${room.max_players})</button>`;
+            } else {
+                actionBtnHtml = `<span style="color: var(--text-muted); font-size: 0.85rem;">Penuh / Tanding</span>`;
+            }
+
+            row.innerHTML = `
+                <div class="room-card-info">
+                    <div class="room-card-name">${room.name}</div>
+                    <div class="room-card-meta">
+                        <span>👑 Host: <strong>${room.host}</strong></span>
+                        <span>🧩 Papan: <strong>${room.board_id}</strong></span>
+                        <span>👥 ${playerCount} / ${room.max_players} Pemain</span>
+                        <span class="room-card-badge ${isPlaying ? 'room-status-playing' : 'room-status-waiting'}">
+                            ${isPlaying ? 'Sedang Bertanding' : 'Menunggu...'}
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    ${actionBtnHtml}
+                </div>
+            `;
+
+            const startBtn = row.querySelector(".btn-start-room");
+            if (startBtn) {
+                startBtn.addEventListener("click", () => {
+                    if (tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                        tournamentWS.send(JSON.stringify({
+                            action: "start_room_match",
+                            room_id: room.id
+                        }));
+                    }
+                });
+            }
+
+            const joinBtn = row.querySelector(".btn-join-room");
+            if (joinBtn) {
+                joinBtn.addEventListener("click", () => {
+                    if (tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                        tournamentWS.send(JSON.stringify({
+                            action: "join_room",
+                            room_id: room.id
+                        }));
+                    }
+                });
+            }
+
+            lobbyRoomsList.appendChild(row);
+        });
+    }
+
+    // 5. Event Listeners untuk Lobby, Duel & Rooms
+    if (openLobbyBtn) {
+        openLobbyBtn.addEventListener("click", () => {
+            fetchTournamentStatus();
+            renderLobbyPlayers();
+            renderLobbyRooms();
+            if (lobbyModal) lobbyModal.classList.add("show");
+        });
+    }
+
+    if (openPlayersBtn) {
+        openPlayersBtn.addEventListener("click", () => {
+            fetchTournamentStatus();
+            renderLobbyPlayers();
+            renderLobbyRooms();
+            if (lobbyModal) lobbyModal.classList.add("show");
+        });
+    }
+
+    if (closeLobbyBtn) {
+        closeLobbyBtn.addEventListener("click", () => {
+            if (lobbyModal) lobbyModal.classList.remove("show");
+        });
+    }
+
+    if (lobbyModal) {
+        lobbyModal.addEventListener("click", (e) => {
+            if (e.target === lobbyModal) lobbyModal.classList.remove("show");
+        });
+    }
+
+    if (refreshOnlineBtn) {
+        refreshOnlineBtn.addEventListener("click", () => {
+            fetchTournamentStatus();
+        });
+    }
+
+    if (tabDuelBtn && tabRoomsBtn) {
+        tabDuelBtn.addEventListener("click", () => {
+            tabDuelBtn.classList.add("active");
+            tabRoomsBtn.classList.remove("active");
+            if (lobbyDuelPanel) lobbyDuelPanel.classList.remove("hidden");
+            if (lobbyRoomsPanel) lobbyRoomsPanel.classList.add("hidden");
+        });
+
+        tabRoomsBtn.addEventListener("click", () => {
+            tabRoomsBtn.classList.add("active");
+            tabDuelBtn.classList.remove("active");
+            if (lobbyRoomsPanel) lobbyRoomsPanel.classList.remove("hidden");
+            if (lobbyDuelPanel) lobbyDuelPanel.classList.add("hidden");
+            renderLobbyRooms();
+        });
+    }
+
+    if (acceptChallengeBtn) {
+        acceptChallengeBtn.addEventListener("click", () => {
+            if (incomingChallenge && tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                tournamentWS.send(JSON.stringify({
+                    action: "accept_challenge",
+                    from_user: incomingChallenge.from_user,
+                    board_id: incomingChallenge.board_id
+                }));
+            }
+            if (challengeModal) challengeModal.classList.remove("show");
+        });
+    }
+
+    if (rejectChallengeBtn) {
+        rejectChallengeBtn.addEventListener("click", () => {
+            if (incomingChallenge && tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                tournamentWS.send(JSON.stringify({
+                    action: "reject_challenge",
+                    from_user: incomingChallenge.from_user
+                }));
+            }
+            if (challengeModal) challengeModal.classList.remove("show");
+        });
+    }
+
+    if (challengeModal) {
+        challengeModal.addEventListener("click", (e) => {
+            if (e.target === challengeModal) challengeModal.classList.remove("show");
+        });
+    }
+
+    if (openCreateRoomBtn) {
+        openCreateRoomBtn.addEventListener("click", () => {
+            if (createRoomModal) createRoomModal.classList.add("show");
+        });
+    }
+
+    if (closeCreateRoomBtn) {
+        closeCreateRoomBtn.addEventListener("click", () => {
+            if (createRoomModal) createRoomModal.classList.remove("show");
+        });
+    }
+
+    if (createRoomModal) {
+        createRoomModal.addEventListener("click", (e) => {
+            if (e.target === createRoomModal) createRoomModal.classList.remove("show");
+        });
+    }
+
+    if (createRoomForm) {
+        createRoomForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const name = roomNameInput ? roomNameInput.value.trim() : "";
+            const cap = roomMaxPlayers ? parseInt(roomMaxPlayers.value, 10) : 5;
+            const currentBoardId = currentBoard ? currentBoard.id : "";
+
+            if (tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                tournamentWS.send(JSON.stringify({
+                    action: "create_room",
+                    room_name: name,
+                    max_players: cap,
+                    board_id: currentBoardId
+                }));
+            }
+
+            if (createRoomModal) createRoomModal.classList.remove("show");
+        });
+    }
+
+    if (leaveMatchBtn) {
+        leaveMatchBtn.addEventListener("click", () => {
+            if (confirm("Apakah Anda yakin ingin keluar dari pertandingan bersama ini?")) {
+                if (tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                    tournamentWS.send(JSON.stringify({
+                        action: "leave_room"
+                    }));
+                }
+                activeMatchRoom = null;
+                if (matchStatusBar) matchStatusBar.classList.add("hidden");
+                loadNextBoard();
+            }
+        });
+    }
+
+    if (closeMatchOverBtn) {
+        closeMatchOverBtn.addEventListener("click", () => {
+            if (matchOverModal) matchOverModal.classList.remove("show");
+            activeMatchRoom = null;
+            if (matchStatusBar) matchStatusBar.classList.add("hidden");
+        });
+    }
+
+    /* ==========================================================================
        Modal Profil & Statistik Pemain
        ========================================================================== */
     if (profileBtn) {
@@ -957,6 +1556,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (nextBoardBtn) {
         nextBoardBtn.addEventListener("click", () => {
+            if (activeMatchRoom) {
+                alert("Anda sedang berada dalam pertandingan bersama! Selesaikan papan ini bersama lawan atau klik tombol 'Keluar Match' di bilah atas.");
+                return;
+            }
             loadNextBoard();
         });
     }
@@ -1547,10 +2150,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 const firstCellEl = getCellElement(wordCells[0].r, wordCells[0].c);
                 sendScoreAction("word_correct", firstCellEl);
 
+                // Kirim update progres ke anggota match turnamen
+                if (activeMatchRoom && tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                    tournamentWS.send(JSON.stringify({
+                        action: "progress_update",
+                        words_solved: completedWordsCount,
+                        total_words: boardWords.length
+                    }));
+                    const myUname = getUser() ? getUser().username : "Anda";
+                    updateOpponentProgress(myUname, completedWordsCount, boardWords.length);
+                }
+
                 // Jika seluruh kata pada papan berhasil diselesaikan
                 if (completedWordsCount === boardWords.length) {
                     completedBoardsCount++;
                     sendScoreAction("board_completed", null);
+
+                    // Beritahu server bahwa kita menyelesaikan papan lebih dulu
+                    if (activeMatchRoom && tournamentWS && tournamentWS.readyState === WebSocket.OPEN) {
+                        tournamentWS.send(JSON.stringify({
+                            action: "match_finished"
+                        }));
+                    }
+
                     setTimeout(() => {
                         showVictory();
                     }, 500);
