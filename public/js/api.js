@@ -11,11 +11,13 @@ function getToken() {
 
 function setToken(token) {
     localStorage.setItem(TOKEN_KEY, token);
+    document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
 }
 
 function removeToken() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    document.cookie = "token=; path=/; max-age=0; SameSite=Lax";
 }
 
 function getUser() {

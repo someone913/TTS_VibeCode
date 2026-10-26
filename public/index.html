@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TTS Indonesia - Teka-Teki Silang Klasik Modern</title>
+    <title>TTS Indonesia - Mode Turnamen & Teka-Teki Silang Real-Time</title>
     <!-- Mencegah kedipan tema putih/gelap saat loading awal -->
     <script>
         (function() {
@@ -20,8 +20,18 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
+    <!-- Toast Notifikasi Serangan (Bom & Freeze) -->
+    <div id="attack-toast" class="attack-toast hidden">
+        <div class="toast-icon" id="attack-toast-icon">⚠️</div>
+        <div class="toast-body">
+            <h4 id="attack-toast-title">Peringatan Serangan!</h4>
+            <p id="attack-toast-msg">Anda diserang oleh pemain!</p>
+        </div>
+        <div class="toast-timer" id="attack-toast-timer">5s</div>
+    </div>
+
     <div class="app-container">
-        <!-- Header -->
+        <!-- Header Utama -->
         <header class="app-header">
             <div class="brand-wrapper">
                 <div class="brand-logo-tiles">
@@ -31,7 +41,7 @@
                 </div>
                 <div class="brand-headings">
                     <span class="brand-title">TTS Indonesia</span>
-                    <span class="brand-subtitle">Teka-Teki Silang Interaktif</span>
+                    <span class="brand-subtitle">Arena Teka-Teki Silang & Turnamen</span>
                 </div>
             </div>
 
@@ -71,6 +81,43 @@
             </div>
         </header>
 
+        <!-- 🏆 Banner Indikator Mode Turnamen Aktif -->
+        <div class="tournament-banner" id="tournament-banner">
+            <div class="t-banner-left">
+                <span class="t-live-pulse"></span>
+                <span class="t-banner-title">🏆 Mode Turnamen Aktif</span>
+                <span class="t-banner-sub">Pecahkan soal berikon untuk amunisi item, serang lawan dengan Bom 💣 atau Freeze ❄️!</span>
+            </div>
+            <div class="t-banner-right">
+                <span class="t-online-chip">
+                    <span class="online-indicator-dot"></span>
+                    <span>Pemain Online:</span>
+                    <strong id="online-players-count">1</strong>
+                </span>
+            </div>
+        </div>
+
+        <!-- 🎒 Panel Amunisi / Inventori Item -->
+        <div class="inventory-bar">
+            <div class="inventory-info">
+                <span class="inv-title">🎒 Amunisi Turnamen:</span>
+                <span class="inv-desc">Klik item amunisi untuk memilih target dan melempar serangan</span>
+            </div>
+            <div class="inventory-slots">
+                <button id="item-btn-bomb" class="inv-item-btn inv-bomb" disabled title="Pecahkan soal bertanda 💣 untuk mendapatkan Bom">
+                    <span class="inv-emoji">💣</span>
+                    <span class="inv-name">Bom</span>
+                    <span class="inv-count-badge" id="count-bomb">0</span>
+                </button>
+
+                <button id="item-btn-freeze" class="inv-item-btn inv-freeze" disabled title="Pecahkan soal bertanda ❄️ untuk mendapatkan Freeze">
+                    <span class="inv-emoji">❄️</span>
+                    <span class="inv-name">Freeze</span>
+                    <span class="inv-count-badge" id="count-freeze">0</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Toolbar Kontrol Permainan -->
         <div class="app-toolbar">
             <div class="board-info">
@@ -101,7 +148,7 @@
         <main class="game-main">
             <!-- Papan Grid TTS -->
             <section class="board-card">
-                <div class="board-viewport">
+                <div class="board-viewport" id="board-viewport">
                     <div id="tts-board">
                         <div class="spinner"></div>
                     </div>
@@ -141,6 +188,25 @@
                 </div>
             </aside>
         </main>
+    </div>
+
+    <!-- Modal Pilih Target Lempar Item -->
+    <div id="target-modal" class="modal-overlay">
+        <div class="modal-card target-card">
+            <div class="leaderboard-modal-header">
+                <h2>🎯 Pilih Target Serangan</h2>
+                <button id="close-target-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <p class="target-modal-sub" id="target-modal-sub">
+                Pilih pemain yang sedang online untuk diserang dengan <strong id="selected-item-label" style="color: #f59e0b;">Bom 💣</strong>:
+            </p>
+
+            <div class="target-players-list" id="target-players-list">
+                <!-- Diisi via JS -->
+            </div>
+
+            <div id="target-modal-alert" class="alert alert-error hidden" style="margin-top: 14px;"></div>
+        </div>
     </div>
 
     <!-- Modal Profil & Statistik Pemain -->
@@ -192,10 +258,10 @@
     <div id="leaderboard-modal" class="modal-overlay">
         <div class="modal-card leaderboard-card">
             <div class="leaderboard-modal-header">
-                <h2>🏆 Papan Peringkat Pemain</h2>
+                <h2>🏆 Papan Peringkat Turnamen</h2>
                 <button id="close-leaderboard-btn" class="modal-close-btn">&times;</button>
             </div>
-            <p class="leaderboard-modal-sub">Daftar 10 pemain terbaik dengan skor dan pencapaian tertinggi</p>
+            <p class="leaderboard-modal-sub">Daftar 10 pemain terbaik dengan skor dan pencapaian tertinggi secara real-time</p>
 
             <div class="leaderboard-table-wrap">
                 <table class="leaderboard-table">

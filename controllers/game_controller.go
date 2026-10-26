@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 
 	"go_vibe/config"
 	"go_vibe/models"
@@ -11,6 +13,33 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// assignRandomItems menyisipkan item ("bomb" atau "freeze") secara acak pada beberapa soal
+func assignRandomItems(words []models.BoardWord) []models.BoardWord {
+	if len(words) == 0 {
+		return words
+	}
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	indices := r.Perm(len(words))
+
+	// Tentukan jumlah soal ber-item (2 - 4 soal per papan)
+	itemCount := 2
+	if len(words) >= 6 {
+		itemCount = 3
+	}
+	if len(words) >= 10 {
+		itemCount = 4
+	}
+
+	types := []string{"bomb", "freeze", "bomb", "freeze"}
+	for i := 0; i < itemCount && i < len(words); i++ {
+		idx := indices[i]
+		words[idx].Item = types[i%len(types)]
+	}
+
+	return words
+}
 
 // GetBoardByID mengambil satu papan TTS berdasarkan ID (contoh: "P01" atau "1")
 func GetBoardByID(c *gin.Context) {
@@ -41,6 +70,9 @@ func GetBoardByID(c *gin.Context) {
 		return
 	}
 
+	// Sisipkan amunisi item turnamen secara acak pada beberapa kata
+	board.Words = assignRandomItems(board.Words)
+
 	c.JSON(http.StatusOK, board)
 }
 
@@ -70,6 +102,9 @@ func GetRandomBoard(c *gin.Context) {
 		})
 		return
 	}
+
+	// Sisipkan amunisi item turnamen secara acak pada beberapa kata
+	board.Words = assignRandomItems(board.Words)
 
 	c.JSON(http.StatusOK, board)
 }

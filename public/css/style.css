@@ -1406,3 +1406,460 @@ body {
     font-weight: 800;
     color: var(--text-main);
 }
+
+
+/* ==========================================================================
+   Tournament Mode, Inventory & Attack SFX Styles
+   ========================================================================== */
+
+/* 🏆 Tournament Indicator Banner */
+.tournament-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(56, 189, 248, 0.1) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: var(--radius-lg);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
+    transition: var(--transition-base);
+}
+
+.t-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.t-live-pulse {
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: livePulse 1.6s infinite;
+}
+
+@keyframes livePulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+.t-banner-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--warning-light);
+    letter-spacing: -0.2px;
+}
+
+[data-theme="light"] .t-banner-title {
+    color: #b45309;
+}
+
+.t-banner-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.t-online-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface-subtle);
+    border: 1px solid var(--border-medium);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+}
+
+.online-indicator-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+
+/* 🎒 Amunisi / Inventory Slots Bar */
+.inventory-bar {
+    background: var(--bg-surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--card-shadow);
+    border-radius: var(--radius-lg);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    transition: var(--transition-base);
+}
+
+.inventory-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inv-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.inv-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.inventory-slots {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.inv-item-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-surface-subtle);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transition: var(--transition-base);
+    user-select: none;
+    opacity: 0.6;
+}
+
+.inv-item-btn.has-stock {
+    opacity: 1;
+    cursor: pointer;
+    transform: translateY(0);
+}
+
+.inv-item-btn.has-stock:hover {
+    transform: translateY(-2px);
+}
+
+.inv-item-btn.has-stock:active {
+    transform: scale(0.97);
+}
+
+/* Bom Amunisi Button */
+.inv-bomb.has-stock {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.25));
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #fca5a5;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+    animation: bombGlowPulse 2s infinite alternate;
+}
+
+@keyframes bombGlowPulse {
+    from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+    to { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+}
+
+/* Freeze Amunisi Button */
+.inv-freeze.has-stock {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(2, 132, 199, 0.25));
+    border-color: rgba(56, 189, 248, 0.6);
+    color: #7dd3fc;
+    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+    animation: freezeGlowPulse 2s infinite alternate;
+}
+
+@keyframes freezeGlowPulse {
+    from { box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+    to { box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); }
+}
+
+.inv-emoji {
+    font-size: 1.25rem;
+}
+
+.inv-count-badge {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-medium);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.inv-bomb.has-stock .inv-count-badge {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+.inv-freeze.has-stock .inv-count-badge {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0369a1;
+}
+
+/* 🎯 Soal Ber-Item Icon Badge */
+.clue-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    line-height: 1;
+    margin-left: 6px;
+    animation: itemBounce 1.8s infinite ease-in-out;
+}
+
+@keyframes itemBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px) scale(1.1); }
+}
+
+/* ⚠️ Floating Attack Alert Toast */
+.attack-toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    border: 2px solid #ef4444;
+    box-shadow: 0 12px 36px rgba(239, 68, 68, 0.45);
+    border-radius: var(--radius-lg);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 99999;
+    color: #ffffff;
+    animation: toastSlideDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 500px;
+    width: 90%;
+}
+
+@keyframes toastSlideDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -30px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.toast-icon {
+    font-size: 2.2rem;
+    animation: gentleWiggle 1s infinite alternate;
+}
+
+.toast-body {
+    flex: 1;
+}
+
+.toast-body h4 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #f87171;
+    margin-bottom: 2px;
+}
+
+.toast-body p {
+    font-size: 0.88rem;
+    color: #e2e8f0;
+}
+
+.toast-timer {
+    background: rgba(239, 68, 68, 0.25);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* ❄️ Efek Serangan Freeze (5 Detik) */
+.board-frozen {
+    position: relative;
+    pointer-events: none !important;
+    filter: drop-shadow(0 0 24px #38bdf8) !important;
+    transition: filter 0.3s ease;
+}
+
+.board-frozen input {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+.board-frozen::after {
+    content: "❄️ MEMBEKU! KOTAK TERKUNCI (5 DETIK)";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(2, 132, 199, 0.94);
+    color: #ffffff;
+    padding: 16px 28px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 1.15rem;
+    box-shadow: 0 0 35px rgba(56, 189, 248, 0.9);
+    z-index: 1000;
+    border: 2px solid #bae6fd;
+    letter-spacing: 0.5px;
+    text-align: center;
+    white-space: nowrap;
+    animation: iceShimmer 1.5s infinite alternate;
+}
+
+@keyframes iceShimmer {
+    from { transform: translate(-50%, -50%) scale(0.98); }
+    to { transform: translate(-50%, -50%) scale(1.02); }
+}
+
+/* 💣 Efek Serangan Bom (Shake & Blur 5 Detik) */
+@keyframes attackShake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    15% { transform: translate(-10px, 8px) rotate(-2deg); }
+    30% { transform: translate(10px, -8px) rotate(2deg); }
+    45% { transform: translate(-8px, -6px) rotate(-1.5deg); }
+    60% { transform: translate(8px, 6px) rotate(1.5deg); }
+    75% { transform: translate(-6px, 4px) rotate(-1deg); }
+    90% { transform: translate(6px, -4px) rotate(1deg); }
+}
+
+.board-bombed {
+    animation: attackShake 0.32s infinite !important;
+    filter: blur(4.5px) !important;
+    position: relative;
+    pointer-events: none !important;
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.8) !important;
+}
+
+.board-bombed::after {
+    content: "💣 KENA BOM! PAPAN BERGETAR & KABUR (5 DETIK)";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(220, 38, 38, 0.94);
+    color: #ffffff;
+    padding: 16px 28px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 1.15rem;
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.95);
+    z-index: 1000;
+    border: 2px solid #fca5a5;
+    letter-spacing: 0.5px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 🎯 Modal Target Serangan */
+.target-card {
+    max-width: 520px !important;
+    text-align: left !important;
+    padding: 30px !important;
+}
+
+.target-modal-sub {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.target-players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.target-player-row {
+    background: var(--bg-surface-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: var(--transition-base);
+}
+
+.target-player-row:hover {
+    background: var(--bg-surface-elevated);
+    border-color: var(--primary-light);
+    transform: translateX(4px);
+}
+
+.target-player-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.btn-attack {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    transition: var(--transition-base);
+    font-family: inherit;
+}
+
+.btn-attack:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+}
+
+.btn-attack:active {
+    transform: scale(0.96);
+}
+
+.no-targets-notice {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    background: var(--bg-surface-subtle);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-medium);
+}

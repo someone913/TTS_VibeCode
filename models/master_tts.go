@@ -39,6 +39,7 @@ type BoardWord struct {
 	RevealRow    *int     `gorm:"column:reveal_row" json:"reveal_row"`
 	RevealCol    *int     `gorm:"column:reveal_col" json:"reveal_col"`
 	RevealLetter *string  `gorm:"column:reveal_letter" json:"reveal_letter"`
+	Item         string   `gorm:"-" json:"item,omitempty"` // "bomb" atau "freeze" untuk mode turnamen
 	Question     Question `gorm:"foreignKey:QuestionID;references:ID" json:"question"`
 }
 

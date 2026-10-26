@@ -46,7 +46,9 @@ func main() {
 	r.GET("/register", func(c *gin.Context) {
 		c.File("./public/register.html")
 	})
-	r.GET("/admin", func(c *gin.Context) {
+
+	// 🔒 Rute halaman Admin terproteksi di sisi server (Wajib role is_admin == true di Supabase)
+	r.GET("/admin", middleware.RequireAdminPage(), func(c *gin.Context) {
 		c.File("./public/admin.html")
 	})
 
@@ -58,7 +60,10 @@ func main() {
 	}
 	r.GET("/api/leaderboard", controllers.GetLeaderboard)
 
-	// 7. Rute API Terproteksi (Wajib Token JWT Pemain)
+	// ⚡ 7. Endpoint WebSocket Mode Turnamen Real-Time
+	r.GET("/api/ws/tournament", controllers.HandleTournamentWS)
+
+	// 8. Rute API Terproteksi (Wajib Token JWT Pemain)
 	protectedApi := r.Group("/api", middleware.RequireAuth())
 	{
 		protectedApi.GET("/auth/me", controllers.GetCurrentUser)
@@ -69,7 +74,7 @@ func main() {
 		protectedApi.GET("/boards/:id", controllers.GetBoardByID)
 	}
 
-	// 8. Rute API Administrator (Wajib Token JWT & is_admin = true)
+	// 9. Rute API Administrator (Wajib Token JWT & is_admin = true)
 	adminApi := r.Group("/api/admin", middleware.RequireAuth(), middleware.RequireAdmin())
 	{
 		adminApi.GET("/boards", controllers.GetAdminBoards)
@@ -79,7 +84,7 @@ func main() {
 		adminApi.DELETE("/boards/:id", controllers.DeleteAdminBoard)
 	}
 
-	// 9. Tentukan port & jalankan server (hostless-ready)
+	// 10. Tentukan port & jalankan server (hostless-ready)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = os.Getenv("APP_PORT")

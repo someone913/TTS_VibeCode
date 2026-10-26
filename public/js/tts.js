@@ -1,11 +1,11 @@
 /**
- * tts.js - Logika Interaktif Papan TTS ID
+ * tts.js - Logika Interaktif Papan TTS ID & Mode Turnamen Real-Time
  * Fitur:
- * - Keamanan Skor Backend: Aksi 'word_correct', 'hint_used', 'board_completed' divalidasi langsung di database Supabase
- * - Profil & Statistik Pemain (Peringkat Global, Kata Terpecahkan, Papan Selesai)
- * - Leaderboard Real-Time dengan Top Medali 🥇 🥈 🥉
- * - Audio Engine (Ketik, Chime Benar, Buzzer Salah & Shake Merah, Fanfare, BGM)
- * - Kembang Api Konfeti Kemenangan (canvas-confetti)
+ * - Keamanan Admin Terpusat: Tombol admin hanya tampil jika is_admin == true dari Supabase
+ * - Mode Turnamen & WebSockets: Melacak pemain online & pertukaran serangan real-time
+ * - Mekanik Item & Inventori: Soal berhadiah Bom 💣 & Freeze ❄️, Amunisi & Lempar Target
+ * - Efek Serangan & SFX: Freeze (kunci input 5s + suara es), Bom (shake + blur 5s + meme ketawa ngakak)
+ * - Audio Engine (Ketik, Chime Benar, Buzzer Salah, BGM, Fanfare) & Konfeti Kemenangan
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -33,8 +33,25 @@ document.addEventListener("DOMContentLoaded", () => {
     let completedBoardsCount = 0;
     let completedWordsCount = 0;
 
+    // State Turnamen & Serangan
+    let tournamentWS = null;
+    let onlinePlayers = [];
+    let currentItemToThrow = null;
+    let isAttackedFrozen = false;
+    let isAttackedBombed = false;
+    let freezeTimerTimeout = null;
+    let bombTimerTimeout = null;
+    let attackToastInterval = null;
+
+    // Inventori Amunisi Pemain
+    const inventory = {
+        bomb: 0,
+        freeze: 0
+    };
+
     // Elemen DOM Utama
     const boardEl = document.getElementById("tts-board");
+    const boardViewport = document.getElementById("board-viewport");
     const boardPill = document.getElementById("board-pill");
     const progressText = document.getElementById("board-progress-text");
     const acrossCluesList = document.getElementById("across-clues");
@@ -47,6 +64,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const modeSelect = document.getElementById("mode-select");
     const logoutBtn = document.getElementById("logout-btn");
     const adminNavBtn = document.getElementById("admin-nav-btn");
+
+    // Elemen Turnamen & Inventori
+    const onlineCountEl = document.getElementById("online-players-count");
+    const itemBtnBomb = document.getElementById("item-btn-bomb");
+    const itemBtnFreeze = document.getElementById("item-btn-freeze");
+    const countBombEl = document.getElementById("count-bomb");
+    const countFreezeEl = document.getElementById("count-freeze");
+
+    // Modal Pilih Target
+    const targetModal = document.getElementById("target-modal");
+    const closeTargetBtn = document.getElementById("close-target-btn");
+    const targetPlayersList = document.getElementById("target-players-list");
+    const selectedItemLabel = document.getElementById("selected-item-label");
+    const targetModalAlert = document.getElementById("target-modal-alert");
+
+    // Toast Notifikasi Serangan
+    const attackToast = document.getElementById("attack-toast");
+    const attackToastIcon = document.getElementById("attack-toast-icon");
+    const attackToastTitle = document.getElementById("attack-toast-title");
+    const attackToastMsg = document.getElementById("attack-toast-msg");
+    const attackToastTimer = document.getElementById("attack-toast-timer");
 
     // Modal Profil
     const profileBtn = document.getElementById("profile-btn");
@@ -73,10 +111,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const modalTotalScore = document.getElementById("modal-total-score");
     const modalNextBtn = document.getElementById("modal-next-btn");
 
-    // Tombol Musik Latar
+    // Tombol Musik Latar & Tema
     const bgmToggleBtn = document.getElementById("bgm-toggle-btn");
-
-    // Tombol & State Mode Tema (Gelap / Terang)
     const themeToggleBtn = document.getElementById("theme-toggle-btn");
     const themeIcon = document.getElementById("theme-icon");
     const themeText = document.getElementById("theme-text");
@@ -99,12 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function applyTheme(theme) {
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem("tts_theme", theme);
-        if (themeIcon) {
-            themeIcon.textContent = theme === "dark" ? "🌙" : "☀️";
-        }
-        if (themeText) {
-            themeText.textContent = theme === "dark" ? "Gelap" : "Terang";
-        }
+        if (themeIcon) themeIcon.textContent = theme === "dark" ? "🌙" : "☀️";
+        if (themeText) themeText.textContent = theme === "dark" ? "Gelap" : "Terang";
         if (themeToggleBtn) {
             themeToggleBtn.title = theme === "dark" ? "Beralih ke Mode Terang (Light Mode)" : "Beralih ke Mode Gelap (Dark Mode)";
         }
@@ -113,11 +145,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initTheme();
 
     /* ==========================================================================
-       Web Audio API Sound Engine (Bebas Ketergantungan File Eksternal)
+       Web Audio API Sound Engine & SFX Serangan
        ========================================================================== */
     let audioCtx = null;
     let bgmOscillators = [];
-    let bgmGainNode = null;
     let isBgmPlaying = false;
 
     function getAudioContext() {
@@ -156,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch {}
     }
 
-    // Suara Kesalahan / Huruf Salah (Soft Buzzer / Error Thud)
+    // Suara Huruf Salah (Soft Buzzer)
     function playWrongSound() {
         try {
             const ctx = getAudioContext();
@@ -209,7 +240,84 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch {}
     }
 
-    // Suara Penggunaan Bantuan / Hint
+    // Suara Mendapatkan Amunisi Item (Powerup Fanfare)
+    function playItemClaimSound() {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5
+            notes.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.06);
+
+                gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.06 + 0.25);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(ctx.currentTime + idx * 0.06);
+                osc.stop(ctx.currentTime + idx * 0.06 + 0.28);
+            });
+        } catch {}
+    }
+
+    // Suara Es Membeku (Freeze Attack SFX)
+    function playFreezeSound() {
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            // Suara kristal es membeku dengan frekuensi menurun
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(1500, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.45);
+
+            gain.gain.setValueAtTime(0.28, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+
+            // Shimmer kristal es sekunder
+            const shimmer = ctx.createOscillator();
+            const sGain = ctx.createGain();
+            shimmer.type = "triangle";
+            shimmer.frequency.setValueAtTime(2400, ctx.currentTime + 0.05);
+            shimmer.frequency.exponentialRampToValueAtTime(650, ctx.currentTime + 0.4);
+
+            sGain.gain.setValueAtTime(0.18, ctx.currentTime + 0.05);
+            sGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+
+            shimmer.connect(sGain);
+            sGain.connect(ctx.destination);
+            shimmer.start(ctx.currentTime + 0.05);
+            shimmer.stop(ctx.currentTime + 0.48);
+        } catch {}
+    }
+
+    // Suara Meme Ketawa Ngakak (Bom Attack SFX)
+    function playBombMemeSound() {
+        try {
+            const laughAudio = new Audio("https://www.myinstants.com/media/sounds/ngakak-laugh-annoying-79255.mp3");
+            laughAudio.volume = 0.9;
+            laughAudio.play().catch(() => {
+                // Fallback jika diblok autoplay browser: gunakan synth buzzer
+                playWrongSound();
+            });
+        } catch {
+            playWrongSound();
+        }
+    }
+
+    // Suara Hint
     function playHintSound() {
         try {
             const ctx = getAudioContext();
@@ -232,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch {}
     }
 
-    // Suara Fanfare Kemenangan
+    // Fanfare Kemenangan
     function playVictoryFanfare() {
         try {
             const ctx = getAudioContext();
@@ -248,10 +356,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
 
-                osc.type = "sine";
+                osc.type = "triangle";
                 osc.frequency.setValueAtTime(note.f, ctx.currentTime + timeOffset);
 
-                gain.gain.setValueAtTime(0.2, ctx.currentTime + timeOffset);
+                gain.gain.setValueAtTime(0.18, ctx.currentTime + timeOffset);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + timeOffset + note.d);
 
                 osc.connect(gain);
@@ -260,34 +368,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 osc.start(ctx.currentTime + timeOffset);
                 osc.stop(ctx.currentTime + timeOffset + note.d + 0.05);
 
-                timeOffset += note.d + 0.03;
+                timeOffset += note.d + 0.04;
             });
         } catch {}
     }
 
-    // Generator Musik Latar Santai (Ambient Chill Synthesizer)
+    // Musik Latar Santai (Ambient BGM)
     function startAmbientBgm() {
         try {
             const ctx = getAudioContext();
-            if (!ctx) return;
+            if (!ctx || isBgmPlaying) return;
+
             stopAmbientBgm();
 
-            bgmGainNode = ctx.createGain();
-            bgmGainNode.gain.setValueAtTime(0.035, ctx.currentTime);
-
-            const filter = ctx.createBiquadFilter();
-            filter.type = "lowpass";
-            filter.frequency.setValueAtTime(380, ctx.currentTime);
-
-            bgmGainNode.connect(filter);
-            filter.connect(ctx.destination);
-
-            const freqs = [130.81, 196.00, 261.63, 329.63];
+            const freqs = [174.61, 220.00, 261.63, 329.63]; // F3 chord ambient
             freqs.forEach((freq) => {
                 const osc = ctx.createOscillator();
-                osc.type = "triangle";
+                const gain = ctx.createGain();
+
+                osc.type = "sine";
                 osc.frequency.setValueAtTime(freq, ctx.currentTime);
-                osc.connect(bgmGainNode);
+
+                gain.gain.setValueAtTime(0.012, ctx.currentTime);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
                 osc.start();
                 bgmOscillators.push(osc);
             });
@@ -325,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* ==========================================================================
-       Keamanan Skor Backend & Sinkronisasi Database
+       Keamanan Admin Terpusat & Sinkronisasi Profil
        ========================================================================== */
     async function syncUserData() {
         try {
@@ -338,16 +444,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     displayUsername.textContent = res.user.username;
                 }
 
+                // Keamanan Tombol Admin: hanya muncul jika role admin terkonfirmasi
                 if (res.user.is_admin && adminNavBtn) {
                     adminNavBtn.classList.remove("hidden");
+                    adminNavBtn.href = `/admin?token=${encodeURIComponent(token)}`;
+                } else if (adminNavBtn) {
+                    adminNavBtn.classList.add("hidden");
                 }
             }
-        } catch {}
+        } catch (err) {
+            console.error("Gagal sinkronisasi data user:", err);
+        }
     }
 
-    /**
-     * sendScoreAction: Mengirim aksi skor ke backend untuk divalidasi dan disimpan langsung di Supabase
-     */
     async function sendScoreAction(action, triggerEl) {
         try {
             const res = await apiFetch("/api/score", {
@@ -390,6 +499,287 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
             floatEl.remove();
         }, 1200);
+    }
+
+    /* ==========================================================================
+       Infrastruktur WebSockets (Mode Turnamen Real-Time)
+       ========================================================================== */
+    function initTournamentWebSocket() {
+        if (!token) return;
+
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.host}/api/ws/tournament?token=${encodeURIComponent(token)}`;
+
+        try {
+            tournamentWS = new WebSocket(wsUrl);
+
+            tournamentWS.onopen = () => {
+                console.log("[Tournament WS] Terhubung ke arena turnamen real-time");
+            };
+
+            tournamentWS.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleTournamentWSMessage(data);
+                } catch (err) {
+                    console.error("[Tournament WS] Gagal membaca pesan:", err);
+                }
+            };
+
+            tournamentWS.onclose = () => {
+                console.warn("[Tournament WS] Koneksi terputus, mencoba menghubungkan kembali...");
+                setTimeout(initTournamentWebSocket, 3500);
+            };
+
+            tournamentWS.onerror = (err) => {
+                console.error("[Tournament WS] Error koneksi:", err);
+            };
+        } catch (err) {
+            console.error("[Tournament WS] Gagal inisialisasi:", err);
+        }
+    }
+
+    function handleTournamentWSMessage(data) {
+        // 1. Pembaruan Daftar Pemain Online
+        if (data.type === "online_players") {
+            onlinePlayers = data.players || [];
+            if (onlineCountEl) {
+                onlineCountEl.textContent = onlinePlayers.length;
+            }
+            // Jika modal target sedang terbuka, perbarui daftarnya
+            if (targetModal && targetModal.classList.contains("show")) {
+                renderTargetPlayers();
+            }
+        }
+        // 2. Menerima Serangan dari Pemain Lain
+        else if (data.type === "attack_received") {
+            const fromUser = data.from_user || "Pemain Lain";
+            const duration = data.duration || 5;
+
+            if (data.item_type === "freeze") {
+                applyFreezeAttack(fromUser, duration);
+            } else if (data.item_type === "bomb") {
+                applyBombAttack(fromUser, duration);
+            }
+        }
+        // 3. Konfirmasi Serangan Berhasil Dikirim
+        else if (data.type === "attack_success") {
+            const itemEmoji = data.item_type === "bomb" ? "Bom 💣" : "Freeze ❄️";
+            showAttackToast("🚀", "Serangan Berhasil!", `Kamu berhasil melemparkan ${itemEmoji} ke ${data.target_user}!`, 3);
+        }
+        // 4. Kesalahan Serangan
+        else if (data.type === "attack_error") {
+            if (targetModalAlert) {
+                targetModalAlert.textContent = data.message || "Gagal mengirim serangan";
+                targetModalAlert.classList.remove("hidden");
+            } else {
+                alert(data.message || "Gagal mengirim serangan");
+            }
+        }
+        // 5. Pengumuman Arena Turnamen
+        else if (data.type === "tournament_event") {
+            console.log("[Tournament Event]", data.message);
+        }
+    }
+
+    /* ==========================================================================
+       Efek Serangan (Freeze ❄️ & Bom 💣)
+       ========================================================================== */
+    function showAttackToast(icon, title, message, durationSeconds = 5) {
+        if (!attackToast) return;
+
+        if (attackToastIcon) attackToastIcon.textContent = icon;
+        if (attackToastTitle) attackToastTitle.textContent = title;
+        if (attackToastMsg) attackToastMsg.textContent = message;
+
+        attackToast.classList.remove("hidden");
+
+        if (attackToastInterval) clearInterval(attackToastInterval);
+
+        let remaining = durationSeconds;
+        if (attackToastTimer) attackToastTimer.textContent = `${remaining}s`;
+
+        attackToastInterval = setInterval(() => {
+            remaining--;
+            if (attackToastTimer) attackToastTimer.textContent = `${remaining}s`;
+            if (remaining <= 0) {
+                clearInterval(attackToastInterval);
+                attackToast.classList.add("hidden");
+            }
+        }, 1000);
+    }
+
+    // Efek Freeze: Kunci input papan selama 5 detik & putar suara es
+    function applyFreezeAttack(fromUser, durationSeconds = 5) {
+        isAttackedFrozen = true;
+
+        if (boardViewport) {
+            boardViewport.classList.add("board-frozen");
+        }
+
+        playFreezeSound();
+        showAttackToast("❄️", "SERANGAN FREEZE MASUK!", `⚠️ Anda diserang oleh ${fromUser}! Kotak TTS membeku & terkunci selama 5 detik.`, durationSeconds);
+
+        if (freezeTimerTimeout) clearTimeout(freezeTimerTimeout);
+        freezeTimerTimeout = setTimeout(() => {
+            isAttackedFrozen = false;
+            if (boardViewport) {
+                boardViewport.classList.remove("board-frozen");
+            }
+        }, durationSeconds * 1000);
+    }
+
+    // Efek Bom: Animasi getar (shake) + filter blur selama 5 detik & putar meme ketawa ngakak
+    function applyBombAttack(fromUser, durationSeconds = 5) {
+        isAttackedBombed = true;
+
+        if (boardViewport) {
+            boardViewport.classList.add("board-bombed");
+        }
+
+        playBombMemeSound();
+        showAttackToast("💣", "SERANGAN BOM MASUK!", `⚠️ Anda diserang oleh ${fromUser}! Papan berguncang & kabur selama 5 detik.`, durationSeconds);
+
+        if (bombTimerTimeout) clearTimeout(bombTimerTimeout);
+        bombTimerTimeout = setTimeout(() => {
+            isAttackedBombed = false;
+            if (boardViewport) {
+                boardViewport.classList.remove("board-bombed");
+            }
+        }, durationSeconds * 1000);
+    }
+
+    /* ==========================================================================
+       Mekanik Inventori Amunisi & Lempar Target
+       ========================================================================== */
+    function updateInventoryUI() {
+        if (countBombEl) countBombEl.textContent = inventory.bomb;
+        if (countFreezeEl) countFreezeEl.textContent = inventory.freeze;
+
+        if (itemBtnBomb) {
+            itemBtnBomb.disabled = inventory.bomb <= 0;
+            if (inventory.bomb > 0) itemBtnBomb.classList.add("has-stock");
+            else itemBtnBomb.classList.remove("has-stock");
+        }
+
+        if (itemBtnFreeze) {
+            itemBtnFreeze.disabled = inventory.freeze <= 0;
+            if (inventory.freeze > 0) itemBtnFreeze.classList.add("has-stock");
+            else itemBtnFreeze.classList.remove("has-stock");
+        }
+    }
+
+    function claimTournamentItem(itemType) {
+        if (itemType === "bomb") {
+            inventory.bomb++;
+        } else if (itemType === "freeze") {
+            inventory.freeze++;
+        }
+
+        updateInventoryUI();
+        playItemClaimSound();
+
+        const itemName = itemType === "bomb" ? "Bom 💣" : "Freeze ❄️";
+        showAttackToast("🎒", "Amunisi Didapatkan!", `Hebat! Anda mendapatkan 1x ${itemName}. Buka panel amunisi untuk menyerang lawan online!`, 4);
+    }
+
+    if (itemBtnBomb) {
+        itemBtnBomb.addEventListener("click", () => {
+            if (inventory.bomb > 0) openTargetModal("bomb");
+        });
+    }
+
+    if (itemBtnFreeze) {
+        itemBtnFreeze.addEventListener("click", () => {
+            if (inventory.freeze > 0) openTargetModal("freeze");
+        });
+    }
+
+    function openTargetModal(itemType) {
+        currentItemToThrow = itemType;
+        if (selectedItemLabel) {
+            selectedItemLabel.textContent = itemType === "bomb" ? "Bom 💣" : "Freeze ❄️";
+            selectedItemLabel.style.color = itemType === "bomb" ? "#ef4444" : "#38bdf8";
+        }
+
+        renderTargetPlayers();
+        if (targetModal) targetModal.classList.add("show");
+    }
+
+    function renderTargetPlayers() {
+        if (!targetPlayersList) return;
+        targetPlayersList.innerHTML = "";
+        if (targetModalAlert) targetModalAlert.classList.add("hidden");
+
+        const me = getUser();
+        const myName = me ? me.username.toLowerCase() : "";
+        const targetList = onlinePlayers.filter((p) => p.toLowerCase() !== myName);
+
+        if (targetList.length === 0) {
+            targetPlayersList.innerHTML = `
+                <div class="no-targets-notice">
+                    <p style="font-weight: 700; margin-bottom: 6px;">Belum ada pemain lain yang online</p>
+                    <p style="font-size: 0.85rem;">Buka tab penyamaran (incognito) atau ajak teman login untuk mencoba saling serang!</p>
+                </div>
+            `;
+            return;
+        }
+
+        targetList.forEach((playerName) => {
+            const row = document.createElement("div");
+            row.className = "target-player-row";
+            row.innerHTML = `
+                <div class="target-player-name">
+                    <span style="font-size: 1.3rem;">👤</span>
+                    <span>${playerName}</span>
+                </div>
+                <button class="btn-attack">Lempar 💥</button>
+            `;
+
+            const attackBtn = row.querySelector(".btn-attack");
+            attackBtn.addEventListener("click", () => {
+                throwItemTo(playerName);
+            });
+
+            targetPlayersList.appendChild(row);
+        });
+    }
+
+    function throwItemTo(targetUsername) {
+        if (!currentItemToThrow || inventory[currentItemToThrow] <= 0) {
+            alert("Amunisi tidak mencukupi!");
+            return;
+        }
+
+        if (!tournamentWS || tournamentWS.readyState !== WebSocket.OPEN) {
+            alert("Koneksi turnamen WebSocket terputus. Silakan muat ulang halaman.");
+            return;
+        }
+
+        // Kirim payload WebSocket: { action: "throw_item", item_type: "bomb/freeze", target_user: "username" }
+        tournamentWS.send(JSON.stringify({
+            action: "throw_item",
+            item_type: currentItemToThrow,
+            target_user: targetUsername
+        }));
+
+        // Kurangi inventori
+        inventory[currentItemToThrow]--;
+        updateInventoryUI();
+
+        if (targetModal) targetModal.classList.remove("show");
+    }
+
+    if (closeTargetBtn) {
+        closeTargetBtn.addEventListener("click", () => {
+            if (targetModal) targetModal.classList.remove("show");
+        });
+    }
+
+    if (targetModal) {
+        targetModal.addEventListener("click", (e) => {
+            if (e.target === targetModal) targetModal.classList.remove("show");
+        });
     }
 
     /* ==========================================================================
@@ -439,7 +829,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /* ==========================================================================
-       Modal Papan Peringkat (Leaderboard)
+       Modal Papan Peringkat (Leaderboard Cepat)
        ========================================================================== */
     if (leaderboardBtn) {
         leaderboardBtn.addEventListener("click", async () => {
@@ -468,14 +858,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function loadLeaderboard() {
         if (!leaderboardBody) return;
-        leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-dim);">Memuat peringkat...</td></tr>';
+        leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Memuat peringkat turnamen...</td></tr>';
 
         try {
             const data = await apiFetch("/api/leaderboard");
             const list = data.leaderboard || [];
 
             if (list.length === 0) {
-                leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-dim);">Belum ada data pemain.</td></tr>';
+                leaderboardBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Belum ada data pemain.</td></tr>';
                 return;
             }
 
@@ -610,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", () => {
             boardEl.innerHTML = `
                 <div style="text-align: center; color: #f87171; padding: 30px;">
                     <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Gagal memuat papan</p>
-                    <p style="font-size: 0.9rem; color: var(--text-dim);">${err.message}</p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">${err.message}</p>
                     <button class="btn-action btn-next" onclick="location.reload()" style="margin-top: 16px;">Coba Lagi</button>
                 </div>
             `;
@@ -643,6 +1033,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 directionType: isH ? "HORIZONTAL" : "VERTICAL",
                 answer: ans,
                 length: w.length || ans.length,
+                item: w.item || null, // Item turnamen ("bomb" atau "freeze")
+                itemClaimed: false,
                 isCompleted: false
             };
         });
@@ -670,8 +1062,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (w.start_col < minCol) minCol = w.start_col;
         });
 
-        const offsetRow = minRow >= 1 ? 1 : 0;
-        const offsetCol = minCol >= 1 ? 1 : 0;
+        const offsetRow = minRow > 0 ? minRow - 1 : 0;
+        const offsetCol = minCol > 0 ? minCol - 1 : 0;
 
         const H = boardData.grid_height;
         const W = boardData.grid_width;
@@ -798,15 +1190,37 @@ document.addEventListener("DOMContentLoaded", () => {
             const contentDiv = document.createElement("div");
             contentDiv.className = "clue-content";
 
+            // Baris teks clue + ikon item amunisi (jika ada)
+            const textLine = document.createElement("div");
+            textLine.style.display = "flex";
+            textLine.style.alignItems = "center";
+            textLine.style.justifyContent = "space-between";
+            textLine.style.gap = "8px";
+
             const clueText = document.createElement("span");
             clueText.className = "clue-text";
             clueText.textContent = w.question ? w.question.clue : "Soal tidak tersedia";
+            textLine.appendChild(clueText);
+
+            // Sisipkan ikon item amunisi (Bom 💣 atau Freeze ❄️) di sebelah soal
+            if (w.item) {
+                const itemIcon = document.createElement("span");
+                itemIcon.className = "clue-item-icon";
+                if (w.item === "bomb") {
+                    itemIcon.textContent = "💣";
+                    itemIcon.title = "Soal ini berhadiah Bom 💣!";
+                } else if (w.item === "freeze") {
+                    itemIcon.textContent = "❄️";
+                    itemIcon.title = "Soal ini berhadiah Freeze ❄️!";
+                }
+                textLine.appendChild(itemIcon);
+            }
 
             const clueMeta = document.createElement("span");
             clueMeta.className = "clue-meta";
             clueMeta.textContent = `(${w.length} Huruf${w.question && w.question.category ? ` • ${w.question.category}` : ""})`;
 
-            contentDiv.appendChild(clueText);
+            contentDiv.appendChild(textLine);
             contentDiv.appendChild(clueMeta);
 
             li.appendChild(clueNo);
@@ -824,6 +1238,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function handleCellClick(r, c) {
+        if (isAttackedFrozen) return;
+
         const cell = gridMatrix[r][c];
         if (!cell || cell.isBlocked) return;
 
@@ -871,7 +1287,7 @@ document.addEventListener("DOMContentLoaded", () => {
             activeCell.col = targetC;
 
             const input = getCellInput(targetR, targetC);
-            if (input) {
+            if (input && !isAttackedFrozen) {
                 input.focus();
                 input.select();
             }
@@ -932,6 +1348,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function handleKeyDown(e, r, c) {
+        // Blokir input jika sedang dalam efek serangan Freeze
+        if (isAttackedFrozen) {
+            e.preventDefault();
+            return;
+        }
+
         if (e.key === "Backspace") {
             e.preventDefault();
             const cell = gridMatrix[r][c];
@@ -978,6 +1400,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function handleInput(e, r, c) {
+        // Blokir input jika sedang dalam efek serangan Freeze
+        if (isAttackedFrozen) {
+            e.preventDefault();
+            return;
+        }
+
         const input = e.target;
         const val = input.value.trim().toUpperCase();
 
@@ -1022,7 +1450,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 activeCell.row = targetR;
                 activeCell.col = targetC;
                 const input = getCellInput(targetR, targetC);
-                if (input) {
+                if (input && !isAttackedFrozen) {
                     input.focus();
                     input.select();
                 }
@@ -1096,6 +1524,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Efek Suara Kata Berhasil
                 playWordSuccessSound();
 
+                // Cek Hadiah Item Turnamen (Bom 💣 atau Freeze ❄️)
+                if (w.item && !w.itemClaimed) {
+                    w.itemClaimed = true;
+                    claimTournamentItem(w.item);
+                }
+
                 wordCells.forEach((item) => {
                     item.data.isLocked = true;
                     const el = getCellElement(item.r, item.c);
@@ -1132,7 +1566,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function useHint() {
-        if (boardWords.length === 0) return;
+        if (boardWords.length === 0 || isAttackedFrozen) return;
 
         let targetCell = null;
         const cell = gridMatrix[activeCell.row] && gridMatrix[activeCell.row][activeCell.col];
@@ -1214,9 +1648,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return boardEl.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
     }
 
-    // Inisialisasi Sinkronisasi & Papan Awal
+    // Inisialisasi Sinkronisasi, Papan Awal & WebSocket Turnamen
     syncUserData();
     loadBoard();
+    initTournamentWebSocket();
 
     if (localStorage.getItem("tts_bgm_state") === "on") {
         document.addEventListener("click", function initAudioOnGesture() {
