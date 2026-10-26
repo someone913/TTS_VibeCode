@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go_vibe/config"
@@ -13,6 +14,37 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// validateBoardDimensions memastikan grid_height dan grid_width selalu mencakup seluruh koordinat soal
+func validateBoardDimensions(board *models.Board) {
+	maxR := 0
+	maxC := 0
+	for _, w := range board.Words {
+		wordLen := w.Length
+		if wordLen == 0 && w.Question.Answer != "" {
+			wordLen = len(w.Question.Answer)
+		}
+		endR := w.StartRow
+		endC := w.StartCol
+		if strings.EqualFold(w.Direction, "mendatar") || strings.EqualFold(w.Direction, "horizontal") {
+			endC = w.StartCol + wordLen - 1
+		} else {
+			endR = w.StartRow + wordLen - 1
+		}
+		if endR > maxR {
+			maxR = endR
+		}
+		if endC > maxC {
+			maxC = endC
+		}
+	}
+	if maxR > board.GridHeight {
+		board.GridHeight = maxR
+	}
+	if maxC > board.GridWidth {
+		board.GridWidth = maxC
+	}
+}
 
 // assignRandomItems menyisipkan item ("bomb" atau "freeze") secara acak pada beberapa soal
 func assignRandomItems(words []models.BoardWord) []models.BoardWord {
@@ -70,6 +102,9 @@ func GetBoardByID(c *gin.Context) {
 		return
 	}
 
+	// Validasi dan sesuaikan dimensi papan berdasarkan seluruh koordinat kata
+	validateBoardDimensions(&board)
+
 	// Sisipkan amunisi item turnamen secara acak pada beberapa kata
 	board.Words = assignRandomItems(board.Words)
 
@@ -102,6 +137,9 @@ func GetRandomBoard(c *gin.Context) {
 		})
 		return
 	}
+
+	// Validasi dan sesuaikan dimensi papan berdasarkan seluruh koordinat kata
+	validateBoardDimensions(&board)
 
 	// Sisipkan amunisi item turnamen secara acak pada beberapa kata
 	board.Words = assignRandomItems(board.Words)

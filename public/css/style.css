@@ -604,15 +604,22 @@ body {
 #tts-board {
     display: grid;
     gap: 2px;
-    margin: 0 auto;
+    margin: auto;
     user-select: none;
     background: transparent;
+    width: max-content;
+    height: max-content;
+    box-sizing: content-box;
 }
 
 /* TTS Grid Cells */
 .board-cell {
     width: var(--cell-size);
     height: var(--cell-size);
+    min-width: var(--cell-size);
+    min-height: var(--cell-size);
+    box-sizing: border-box;
+    flex-shrink: 0;
     position: relative;
     display: flex;
     align-items: center;

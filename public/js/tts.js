@@ -1629,13 +1629,14 @@ document.addEventListener("DOMContentLoaded", () => {
         boardWords = (boardData.words || []).map((w, idx) => {
             const isH = isHorizontal(w.direction);
             const ans = (w.question && w.question.answer ? w.question.answer : "").toUpperCase().trim();
+            const wordLen = w.length || (ans.length > 0 ? ans.length : 1);
             return {
                 ...w,
                 index: idx,
                 isAcross: isH,
                 directionType: isH ? "HORIZONTAL" : "VERTICAL",
                 answer: ans,
-                length: w.length || ans.length,
+                length: wordLen,
                 item: w.item || null, // Item turnamen ("bomb" atau "freeze")
                 itemClaimed: false,
                 isCompleted: false
@@ -1651,25 +1652,52 @@ document.addEventListener("DOMContentLoaded", () => {
         completedWordsCount = 0;
         updateProgress();
 
+        // 1. Tentukan batas koordinat minimum dan maksimum dari semua kata di papan
+        let minR = 999;
+        let minC = 999;
+        let maxR = 0;
+        let maxC = 0;
+
+        boardWords.forEach((w) => {
+            const wordLen = w.length || (w.answer ? w.answer.length : 1);
+            const rStart = typeof w.start_row === "number" ? w.start_row : 1;
+            const cStart = typeof w.start_col === "number" ? w.start_col : 1;
+
+            if (rStart < minR) minR = rStart;
+            if (cStart < minC) minC = cStart;
+
+            const rEnd = w.isAcross ? rStart : rStart + wordLen - 1;
+            const cEnd = w.isAcross ? cStart + wordLen - 1 : cStart;
+
+            if (rEnd > maxR) maxR = rEnd;
+            if (cEnd > maxC) maxC = cEnd;
+        });
+
+        // 2. Deteksi basis koordinat (1-based dari database vs 0-based)
+        // Data database PostgreSQL selalu 1-based (start_row 1..H, start_col 1..W), sehingga offsetRow = 1 & offsetCol = 1
+        const isOneBased = minR >= 1 && minC >= 1;
+        const offsetRow = isOneBased ? 1 : (minR < 0 ? minR : 0);
+        const offsetCol = isOneBased ? 1 : (minC < 0 ? minC : 0);
+
+        // 3. Hitung dimensi dinamis agar 100% seluruh kotak huruf muat tanpa terpotong
+        const computedH = Math.max(
+            boardData.grid_height || 0,
+            maxR - offsetRow + 1
+        );
+        const computedW = Math.max(
+            boardData.grid_width || 0,
+            maxC - offsetCol + 1
+        );
+
+        const H = Math.max(1, computedH);
+        const W = Math.max(1, computedW);
+
         if (boardPill) {
-            boardPill.textContent = `Papan: ${boardData.id} • ${boardData.grid_width}x${boardData.grid_height}`;
+            boardPill.textContent = `Papan: ${boardData.id} • ${W}x${H}`;
         }
         if (clueCountBadge) {
             clueCountBadge.textContent = `${boardWords.length} Soal`;
         }
-
-        let minRow = 999;
-        let minCol = 999;
-        boardWords.forEach((w) => {
-            if (w.start_row < minRow) minRow = w.start_row;
-            if (w.start_col < minCol) minCol = w.start_col;
-        });
-
-        const offsetRow = minRow > 0 ? minRow - 1 : 0;
-        const offsetCol = minCol > 0 ? minCol - 1 : 0;
-
-        const H = boardData.grid_height;
-        const W = boardData.grid_width;
 
         gridMatrix = Array.from({ length: H }, () =>
             Array.from({ length: W }, () => ({
